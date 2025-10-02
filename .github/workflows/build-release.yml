@@ -34,9 +34,9 @@ jobs:
           # 从 CHANGELOG.md 中提取当前版本的更新内容
           VERSION=${{ steps.version.outputs.version }}
 
-          # 使用 awk 提取对应版本的内容
+          # 使用 awk 提取对应版本的内容（精确匹配版本标题行）
           CHANGELOG=$(awk -v version="[$VERSION]" '
-            $0 ~ version {flag=1; next}
+            /^## / && $0 ~ version {flag=1; next}
             flag && /^---$/ {exit}
             flag && /^## \[/ {exit}
             flag && NF {print}
