@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -80,11 +82,32 @@ class UpdateInfo {
 }
 
 class UpdateService {
-  final Dio _dio = Dio();
+  late final Dio _dio;
 
   // GitHub 仓库信息
   static const String owner = 'Gaq152';
   static const String repo = 'dailyhot-flutter';
+
+  UpdateService() {
+    _dio = Dio(
+      BaseOptions(
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 10),
+      ),
+    );
+
+    // 配置 HTTP 客户端适配器
+    (_dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
+      final client = HttpClient();
+
+      // 禁用证书验证（调试模式）
+      if (kDebugMode) {
+        client.badCertificateCallback = (cert, host, port) => true;
+      }
+
+      return client;
+    };
+  }
 
   /// 检查是否有新版本
   Future<UpdateInfo?> checkUpdate() async {
