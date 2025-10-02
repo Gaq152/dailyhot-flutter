@@ -16,4 +16,9 @@ class AppConstants {
   static const String keyCategories = 'categories';
   static const String keyAutoCheckUpdate = 'auto_check_update';
   static const String keyLastCheckUpdateTime = 'last_check_update_time';
+
+  // 待更新信息
+  static const String keyPendingUpdateVersion = 'pending_update_version';
+  static const String keyPendingUpdateUrl = 'pending_update_url';
+  static const String keyPendingUpdateChangelog = 'pending_update_changelog';
 }

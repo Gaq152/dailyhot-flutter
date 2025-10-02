@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,16 +19,48 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> {
   bool _isRefreshing = false;
+  Timer? _updateCheckTimer;
+  bool _hasPendingUpdate = false;
 
   @override
   void initState() {
     super.initState();
+
+    // 检查是否有待更新版本
+    _checkPendingUpdate();
+
     // 延迟执行自动检查更新，避免影响首屏渲染
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
         _autoCheckUpdate();
       }
     });
+
+    // 设置定期检查（6小时）
+    _updateCheckTimer = Timer.periodic(
+      const Duration(hours: 6),
+      (_) {
+        if (mounted) {
+          _autoCheckUpdate();
+        }
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _updateCheckTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _checkPendingUpdate() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasPending = prefs.getString(AppConstants.keyPendingUpdateVersion) != null;
+    if (mounted) {
+      setState(() {
+        _hasPendingUpdate = hasPending;
+      });
+    }
   }
 
   /// 自动检查更新
@@ -39,26 +72,9 @@ class _HomePageState extends ConsumerState<HomePage> {
         return;
       }
 
-      // 检查上次检查时间，避免频繁检查（24小时检查一次）
-      final prefs = await SharedPreferences.getInstance();
-      final lastCheckTime = prefs.getInt(AppConstants.keyLastCheckUpdateTime);
-      final now = DateTime.now().millisecondsSinceEpoch;
-
-      if (lastCheckTime != null) {
-        final diff = now - lastCheckTime;
-        const oneDayInMillis = 24 * 60 * 60 * 1000;
-        if (diff < oneDayInMillis) {
-          // 距离上次检查不足24小时，跳过
-          return;
-        }
-      }
-
       // 执行检查更新
       final updateService = UpdateService();
       final updateInfo = await updateService.checkUpdate();
-
-      // 更新上次检查时间
-      await prefs.setInt(AppConstants.keyLastCheckUpdateTime, now);
 
       // 如果有新版本，显示更新对话框
       if (updateInfo != null && mounted) {
@@ -70,7 +86,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   /// 显示更新对话框
-  void _showUpdateDialog(UpdateInfo updateInfo) {
+  void _showUpdateDialog(UpdateInfo updateInfo) async {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -163,12 +179,40 @@ class _HomePageState extends ConsumerState<HomePage> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () async {
+              Navigator.pop(context);
+              // 保存待更新信息
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString(AppConstants.keyPendingUpdateVersion, updateInfo.version);
+              await prefs.setString(AppConstants.keyPendingUpdateUrl, updateInfo.downloadUrl);
+              await prefs.setString(AppConstants.keyPendingUpdateChangelog, updateInfo.changelog);
+
+              // 更新状态显示红点
+              if (mounted) {
+                setState(() {
+                  _hasPendingUpdate = true;
+                });
+              }
+            },
             child: const Text('稍后'),
           ),
           FilledButton.icon(
             onPressed: () async {
               Navigator.pop(context);
+              // 清除待更新信息
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.remove(AppConstants.keyPendingUpdateVersion);
+              await prefs.remove(AppConstants.keyPendingUpdateUrl);
+              await prefs.remove(AppConstants.keyPendingUpdateChangelog);
+
+              // 更新状态隐藏红点
+              if (mounted) {
+                setState(() {
+                  _hasPendingUpdate = false;
+                });
+              }
+
+              // 下载更新
               final uri = Uri.parse(updateInfo.downloadUrl);
               if (await canLaunchUrl(uri)) {
                 await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -242,7 +286,10 @@ class _HomePageState extends ConsumerState<HomePage> {
             tooltip: '刷新所有榜单',
           ),
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: Badge(
+              isLabelVisible: _hasPendingUpdate,
+              child: const Icon(Icons.settings),
+            ),
             onPressed: () => context.push('/settings'),
             tooltip: '设置',
           ),
