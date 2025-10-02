@@ -73,6 +73,34 @@ jobs:
       - name: 🔍 代码分析
         run: flutter analyze --no-fatal-infos
 
+      - name: 🔐 配置签名密钥
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          echo "🔑 配置 Release 签名..."
+
+          # 验证必需的secrets是否存在
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "❌ 错误: KEYSTORE_BASE64 secret未配置"
+            exit 1
+          fi
+
+          # 解码 keystore 文件
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/upload-keystore.jks
+
+          # 创建 key.properties 文件
+          cat > android/key.properties << EOF
+          storePassword=$KEYSTORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=upload-keystore.jks
+          EOF
+
+          echo "✅ 签名配置完成"
+
       - name: 🏗️ 构建 APK
         run: |
           echo "🚀 开始构建 Release APK..."

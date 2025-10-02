@@ -6,6 +6,15 @@ plugins {
 }
 
 import com.android.build.gradle.internal.api.BaseVariantOutputImpl
+import java.util.Properties
+import java.io.FileInputStream
+
+// 加载签名配置
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
 
 android {
     namespace = "com.example.dailyhot"
@@ -32,11 +41,25 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            if (keystorePropertiesFile.exists()) {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+                enableV1Signing = true
+                enableV2Signing = true
+                println("✅ Release signing config loaded: keyAlias=${keyAlias}, storeFile=${storeFile?.absolutePath}")
+            } else {
+                println("⚠️ key.properties not found at: ${keystorePropertiesFile.absolutePath}")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
