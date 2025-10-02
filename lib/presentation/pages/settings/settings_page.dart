@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/settings_provider.dart';
 import '../../../data/services/update_service.dart';
+import '../../../core/constants/app_constants.dart';
 import '../about/about_page.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
@@ -19,12 +21,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _isScrollingDown = true; // true=向下滚动显示向下箭头, false=向上滚动显示向上箭头
   double _lastScrollOffset = 0;
   String _appVersion = '加载中...';
+  UpdateInfo? _pendingUpdate;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_scrollListener);
     _loadAppVersion();
+    _loadPendingUpdate();
   }
 
   Future<void> _loadAppVersion() async {
@@ -33,6 +37,26 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       setState(() {
         _appVersion = packageInfo.version;
       });
+    }
+  }
+
+  Future<void> _loadPendingUpdate() async {
+    final prefs = await SharedPreferences.getInstance();
+    final version = prefs.getString(AppConstants.keyPendingUpdateVersion);
+    final url = prefs.getString(AppConstants.keyPendingUpdateUrl);
+    final changelog = prefs.getString(AppConstants.keyPendingUpdateChangelog);
+
+    if (version != null && url != null && changelog != null) {
+      if (mounted) {
+        setState(() {
+          _pendingUpdate = UpdateInfo(
+            version: version,
+            downloadUrl: url,
+            changelog: changelog,
+            publishedAt: DateTime.now(), // 这个字段在这里不重要
+          );
+        });
+      }
     }
   }
 
@@ -389,10 +413,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 const Divider(height: 1, indent: 72),
                 ListTile(
                   leading: const Icon(Icons.system_update),
-                  title: const Text('检查更新'),
-                  subtitle: const Text('查看是否有新版本'),
-                  trailing: const Icon(Icons.chevron_right, size: 20),
-                  onTap: () => _checkForUpdates(context),
+                  title: Text(_pendingUpdate != null ? '检测到新版本' : '检查更新'),
+                  subtitle: Text(_pendingUpdate != null ? 'v${_pendingUpdate!.version}' : '查看是否有新版本'),
+                  trailing: Badge(
+                    isLabelVisible: _pendingUpdate != null,
+                    child: const Icon(Icons.chevron_right, size: 20),
+                  ),
+                  onTap: () {
+                    if (_pendingUpdate != null) {
+                      _showUpdateDialog(context, _pendingUpdate!);
+                    } else {
+                      _checkForUpdates(context);
+                    }
+                  },
                 ),
                 const Divider(height: 1, indent: 72),
                 SwitchListTile(
@@ -583,7 +616,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       if (context.mounted) Navigator.pop(context);
 
       if (updateInfo != null) {
-        // 有新版本
+        // 有新版本，更新状态
+        if (mounted) {
+          setState(() {
+            _pendingUpdate = updateInfo;
+          });
+        }
         // ignore: use_build_context_synchronously
         _showUpdateDialog(context, updateInfo);
       } else {
@@ -726,12 +764,33 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('稍后更新'),
+            onPressed: () async {
+              Navigator.pop(context);
+              // 保存待更新信息
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString(AppConstants.keyPendingUpdateVersion, updateInfo.version);
+              await prefs.setString(AppConstants.keyPendingUpdateUrl, updateInfo.downloadUrl);
+              await prefs.setString(AppConstants.keyPendingUpdateChangelog, updateInfo.changelog);
+            },
+            child: const Text('稍后'),
           ),
           FilledButton.icon(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
+              // 清除待更新信息
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.remove(AppConstants.keyPendingUpdateVersion);
+              await prefs.remove(AppConstants.keyPendingUpdateUrl);
+              await prefs.remove(AppConstants.keyPendingUpdateChangelog);
+
+              // 更新状态
+              if (mounted) {
+                setState(() {
+                  _pendingUpdate = null;
+                });
+              }
+
+              // 下载更新
               _launchUrl(updateInfo.downloadUrl);
             },
             icon: const Icon(Icons.download, size: 20),

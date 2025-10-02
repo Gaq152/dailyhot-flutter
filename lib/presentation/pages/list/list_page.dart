@@ -5,8 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:android_intent_plus/android_intent.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/hot_list_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../../core/constants/app_constants.dart';
 
 class ListPage extends ConsumerStatefulWidget {
   final String type;
@@ -23,11 +25,23 @@ class _ListPageState extends ConsumerState<ListPage> {
   static const int itemsPerPage = 20;
   bool _isRefreshing = false;
   int _refreshTrigger = 0; // 用于触发列表项重新动画
+  bool _hasPendingUpdate = false;
 
   @override
   void initState() {
     super.initState();
     currentType = widget.type;
+    _checkPendingUpdate();
+  }
+
+  Future<void> _checkPendingUpdate() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasPending = prefs.getString(AppConstants.keyPendingUpdateVersion) != null;
+    if (mounted) {
+      setState(() {
+        _hasPendingUpdate = hasPending;
+      });
+    }
   }
 
   @override
@@ -96,7 +110,10 @@ class _ListPageState extends ConsumerState<ListPage> {
             tooltip: '刷新数据',
           ),
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: Badge(
+              isLabelVisible: _hasPendingUpdate,
+              child: const Icon(Icons.settings),
+            ),
             onPressed: () => context.push('/settings'),
             tooltip: '设置',
           ),
