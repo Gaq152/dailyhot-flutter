@@ -1,0 +1,131 @@
+name: 构建并发布 APK
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # 当推送 v1.0.0 这样的标签时触发
+
+jobs:
+  build-and-release:
+    name: 构建 APK 并发布到 GitHub Releases
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🏷️ 获取版本信息
+        id: version
+        run: |
+          # 从 tag 获取版本号（去掉 v 前缀）
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$GITHUB_REF_NAME" >> $GITHUB_OUTPUT
+          echo "📌 版本: $VERSION"
+
+      - name: 📝 提取 CHANGELOG
+        id: changelog
+        run: |
+          # 从 CHANGELOG.md 中提取当前版本的更新内容
+          VERSION=${{ steps.version.outputs.version }}
+
+          # 使用 awk 提取对应版本的内容
+          CHANGELOG=$(awk -v version="[$VERSION]" '
+            $0 ~ version {flag=1; next}
+            /^## \[/ {if(flag) exit}
+            flag && /^### / {print; getline; while($0 !~ /^(###|##)/ && NF) {print; getline}}
+          ' CHANGELOG.md)
+
+          # 如果没有找到对应版本的内容，使用默认内容
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="### 更新内容\n\n详见 [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)"
+          fi
+
+          # 保存到输出文件（避免多行问题）
+          echo "$CHANGELOG" > /tmp/changelog.txt
+          echo "✅ 已提取 CHANGELOG 内容"
+
+      - name: ☕ 设置 Java 环境
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: 📱 设置 Flutter 环境
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 获取依赖
+        run: flutter pub get
+
+      - name: 🔍 代码分析
+        run: flutter analyze --no-fatal-infos
+
+      - name: 🏗️ 构建 APK
+        run: |
+          echo "🚀 开始构建 Release APK..."
+          flutter build apk --release
+          echo "✅ 构建完成"
+
+      - name: 📋 生成构建信息
+        id: build_info
+        run: |
+          APK_PATH="build/app/outputs/apk/release/dailyhot.apk"
+          APK_SIZE=$(ls -lh $APK_PATH | awk '{print $5}')
+          APK_SHA256=$(sha256sum $APK_PATH | awk '{print $1}')
+
+          echo "size=$APK_SIZE" >> $GITHUB_OUTPUT
+          echo "sha256=$APK_SHA256" >> $GITHUB_OUTPUT
+
+          echo "📊 APK 信息:"
+          echo "   大小: $APK_SIZE"
+          echo "   SHA256: $APK_SHA256"
+
+      - name: 🎉 创建 GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: DailyHot ${{ steps.version.outputs.tag }}
+          body: |
+            ## 📱 DailyHot ${{ steps.version.outputs.tag }}
+
+            $(cat /tmp/changelog.txt)
+
+            ---
+
+            ### 📥 下载安装
+
+            下载下方的 `dailyhot.apk` 文件，安装到 Android 设备即可使用。
+
+            > **注意**：首次安装可能需要允许"安装未知来源应用"权限
+
+            ### 📊 构建信息
+
+            - **文件大小**: ${{ steps.build_info.outputs.size }}
+            - **SHA256**: `${{ steps.build_info.outputs.sha256 }}`
+            - **构建时间**: ${{ github.event.head_commit.timestamp }}
+            - **Flutter 版本**: 3.24.0
+
+            ### 🔗 相关链接
+
+            - [查看完整更新日志](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
+            - [提交问题或建议](https://github.com/${{ github.repository }}/issues)
+            - [源代码](https://github.com/${{ github.repository }})
+
+            ---
+
+            🤖 自动构建并发布
+          files: |
+            build/app/outputs/apk/release/dailyhot.apk
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
