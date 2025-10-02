@@ -1,0 +1,50 @@
+# 杂项文件
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.claude
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+# IntelliJ 相关
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# VS Code 文件夹包含启动配置和任务配置
+# 如果需要版本控制可以取消注释
+#.vscode/
+
+# Flutter/Dart/Pub 相关
+**/doc/api/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+
+# 符号化相关
+app.*.symbols
+
+# 混淆相关
+app.*.map.json
+
+# Android 相关
+**/android/**/gradle-wrapper.jar
+**/android/.gradle
+**/android/captures/
+**/android/gradlew
+**/android/gradlew.bat
+**/android/local.properties
+**/android/**/GeneratedPluginRegistrant.java
+**/android/key.properties
+*.jks
+*.keystore
