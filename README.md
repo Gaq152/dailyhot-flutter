@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/images/app_icon.png" alt="DailyHot Logo" width="120" height="120">
+</p>
+
 <h1 align="center">📱 DailyHot - 每日热点聚合</h1>
 
 <p align="center">
