@@ -140,6 +140,7 @@ class _HotCardState extends ConsumerState<HotCard> {
     final itemSpacing = isMobile ? 6.0 : 8.0;
 
     return ListView.separated(
+      physics: const NeverScrollableScrollPhysics(),
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       itemCount: items.length,
       separatorBuilder: (_, __) => SizedBox(height: itemSpacing),
@@ -318,12 +319,14 @@ class _HotCardState extends ConsumerState<HotCard> {
 
   Widget _buildFooter(BuildContext context, String? updateTime) {
     final formattedTime = _formatUpdateTime(updateTime);
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: colorScheme.surfaceContainerHighest,
         border: Border(
-          top: BorderSide(color: Colors.grey.shade200),
+          top: BorderSide(color: colorScheme.outlineVariant),
         ),
       ),
       child: Row(
@@ -333,7 +336,7 @@ class _HotCardState extends ConsumerState<HotCard> {
             child: Text(
               formattedTime,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey.shade600,
+                    color: colorScheme.onSurfaceVariant,
                     fontSize: 11,
                   ),
               maxLines: 1,
@@ -344,7 +347,7 @@ class _HotCardState extends ConsumerState<HotCard> {
           Icon(
             Icons.chevron_right,
             size: 16,
-            color: Colors.grey.shade400,
+            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
           ),
         ],
       ),
