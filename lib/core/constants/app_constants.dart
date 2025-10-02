@@ -14,4 +14,6 @@ class AppConstants {
   // 本地存储 Key
   static const String keyThemeMode = 'theme_mode';
   static const String keyCategories = 'categories';
+  static const String keyAutoCheckUpdate = 'auto_check_update';
+  static const String keyLastCheckUpdateTime = 'last_check_update_time';
 }

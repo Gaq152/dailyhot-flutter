@@ -164,19 +164,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           const SizedBox(height: 12),
 
-          // 链接跳转方式
-          _buildCard(
-            child: SwitchListTile(
-              title: const Text('新窗口打开链接'),
-              subtitle: const Text('选择榜单列表内容的跳转方式'),
-              value: settings.linkOpenExternal,
-              onChanged: (value) {
-                settingsNotifier.setLinkOpenExternal(value);
-              },
-            ),
-          ),
-          const SizedBox(height: 12),
-
           // 列表文本大小
           _buildCard(
             child: Column(
@@ -406,6 +393,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   subtitle: const Text('查看是否有新版本'),
                   trailing: const Icon(Icons.chevron_right, size: 20),
                   onTap: () => _checkForUpdates(context),
+                ),
+                const Divider(height: 1, indent: 72),
+                SwitchListTile(
+                  secondary: const Icon(Icons.update),
+                  title: const Text('自动检查更新'),
+                  subtitle: const Text('启动时自动检查是否有新版本'),
+                  value: settings.autoCheckUpdate,
+                  onChanged: (value) {
+                    settingsNotifier.setAutoCheckUpdate(value);
+                  },
                 ),
               ],
             ),
