@@ -94,17 +94,21 @@ class UpdateService {
       final currentVersion = packageInfo.version;
 
       // 从 GitHub API 获取最新 Release
-      final response = await _dio.get(
-        'https://api.github.com/repos/$owner/$repo/releases/latest',
-      );
+      final url = 'https://api.github.com/repos/$owner/$repo/releases/latest';
+      debugPrint('检查更新: $url');
+
+      final response = await _dio.get(url);
 
       if (response.statusCode == 200) {
         final updateInfo = UpdateInfo.fromJson(response.data);
 
         // 比较版本号
         if (_isNewerVersion(currentVersion, updateInfo.version)) {
+          debugPrint('发现新版本: ${updateInfo.version} (当前: $currentVersion)');
           return updateInfo;
         }
+
+        debugPrint('已是最新版本: $currentVersion');
       }
 
       return null;

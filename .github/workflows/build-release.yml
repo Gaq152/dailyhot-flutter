@@ -37,8 +37,9 @@ jobs:
           # 使用 awk 提取对应版本的内容
           CHANGELOG=$(awk -v version="[$VERSION]" '
             $0 ~ version {flag=1; next}
-            /^## \[/ {if(flag) exit}
-            flag && /^### / {print; getline; while($0 !~ /^(###|##)/ && NF) {print; getline}}
+            flag && /^---$/ {exit}
+            flag && /^## \[/ {exit}
+            flag && NF {print}
           ' CHANGELOG.md)
 
           # 如果没有找到对应版本的内容，使用默认内容
