@@ -46,8 +46,11 @@ jobs:
             CHANGELOG="### 更新内容\n\n详见 [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)"
           fi
 
-          # 保存到输出文件（避免多行问题）
-          echo "$CHANGELOG" > /tmp/changelog.txt
+          # 保存到 GitHub Actions 输出（使用 EOF 语法支持多行）
+          echo "content<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
           echo "✅ 已提取 CHANGELOG 内容"
 
       - name: ☕ 设置 Java 环境
@@ -96,7 +99,7 @@ jobs:
           body: |
             ## 📱 DailyHot ${{ steps.version.outputs.tag }}
 
-            $(cat /tmp/changelog.txt)
+            ${{ steps.changelog.outputs.content }}
 
             ---
 
