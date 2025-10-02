@@ -8,7 +8,7 @@
   <img src="https://img.shields.io/badge/Flutter-3.35+-blue.svg" alt="Flutter">
   <img src="https://img.shields.io/badge/Dart-3.9+-blue.svg" alt="Dart">
   <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
-  <img src="https://img.shields.io/github/v/release/Gaq152/DailyHotApi" alt="Release">
+  <img src="https://img.shields.io/github/v/release/Gaq152/dailyhot-flutter" alt="Release">
 </p>
 
 <p align="center">
@@ -84,8 +84,8 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/Gaq152/DailyHotApi.git
-cd DailyHotApi
+git clone https://github.com/Gaq152/dailyhot-flutter.git
+cd dailyhot-flutter
 
 # 安装依赖
 flutter pub get
@@ -282,7 +282,7 @@ _待添加_
 **gaq**
 
 - GitHub: [@Gaq152](https://github.com/Gaq152)
-- 项目仓库: [DailyHotApi](https://github.com/Gaq152/DailyHotApi)
+- 项目仓库: [dailyhot-flutter](https://github.com/Gaq152/dailyhot-flutter)
 
 ---
 
