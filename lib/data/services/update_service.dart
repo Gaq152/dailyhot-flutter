@@ -84,7 +84,7 @@ class UpdateService {
 
   // GitHub 仓库信息
   static const String owner = 'Gaq152';
-  static const String repo = 'DailyHotApi';
+  static const String repo = 'dailyhot-flutter';
 
   /// 检查是否有新版本
   Future<UpdateInfo?> checkUpdate() async {

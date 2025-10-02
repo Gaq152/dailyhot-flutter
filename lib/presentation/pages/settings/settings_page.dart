@@ -415,9 +415,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ListTile(
                   leading: Icon(Icons.public, color: Colors.green.shade600),
                   title: const Text('GitHub 仓库'),
-                  subtitle: const Text('Gaq152/DailyHotApi'),
+                  subtitle: const Text('Gaq152/dailyhot-flutter'),
                   trailing: const Icon(Icons.open_in_new, size: 20),
-                  onTap: () => _launchUrl('https://github.com/Gaq152/DailyHotApi'),
+                  onTap: () => _launchUrl('https://github.com/Gaq152/dailyhot-flutter'),
                 ),
                 const Divider(height: 1, indent: 72),
                 ListTile(
@@ -425,7 +425,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   title: const Text('反馈问题'),
                   subtitle: const Text('提交问题或建议'),
                   trailing: const Icon(Icons.open_in_new, size: 20),
-                  onTap: () => _launchUrl('https://github.com/Gaq152/DailyHotApi/issues'),
+                  onTap: () => _launchUrl('https://github.com/Gaq152/dailyhot-flutter/issues'),
                 ),
               ],
             ),
