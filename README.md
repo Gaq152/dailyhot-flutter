@@ -5,7 +5,7 @@
 <h1 align="center">📱 DailyHot - 每日热点聚合</h1>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Flutter-3.24+-blue.svg" alt="Flutter">
+  <img src="https://img.shields.io/badge/Flutter-3.35+-blue.svg" alt="Flutter">
   <img src="https://img.shields.io/badge/Dart-3.9+-blue.svg" alt="Dart">
   <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
   <img src="https://img.shields.io/github/v/release/Gaq152/DailyHotApi" alt="Release">
@@ -76,7 +76,7 @@
 
 ### 环境要求
 
-- Flutter SDK: `>= 3.24.0`
+- Flutter SDK: `>= 3.35.5`
 - Dart SDK: `>= 3.9.2`
 - Android SDK: `>= 21 (Android 5.0)`
 
@@ -114,7 +114,7 @@ flutter build apk --release
 ## 🛠️ 技术栈
 
 ### 核心框架
-- **Flutter 3.24+** - 跨平台 UI 框架
+- **Flutter 3.35+** - 跨平台 UI 框架
 - **Dart 3.9+** - 编程语言
 
 ### 状态管理

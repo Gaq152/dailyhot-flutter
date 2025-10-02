@@ -59,7 +59,7 @@ jobs:
       - name: 📱 设置 Flutter 环境
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.27.0'
+          flutter-version: '3.35.5'
           channel: 'stable'
           cache: true
 
@@ -111,7 +111,7 @@ jobs:
             - **文件大小**: ${{ steps.build_info.outputs.size }}
             - **SHA256**: `${{ steps.build_info.outputs.sha256 }}`
             - **构建时间**: ${{ github.event.head_commit.timestamp }}
-            - **Flutter 版本**: 3.27.0
+            - **Flutter 版本**: 3.35.5
 
             ### 🔗 相关链接
 
