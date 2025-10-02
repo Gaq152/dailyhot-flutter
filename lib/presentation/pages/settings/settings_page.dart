@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../core/constants/app_constants.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../providers/settings_provider.dart';
 import '../../../data/services/update_service.dart';
+import '../about/about_page.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -17,11 +18,22 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _showScrollButton = false;
   bool _isScrollingDown = true; // true=向下滚动显示向下箭头, false=向上滚动显示向上箭头
   double _lastScrollOffset = 0;
+  String _appVersion = '加载中...';
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_scrollListener);
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() {
+        _appVersion = packageInfo.version;
+      });
+    }
   }
 
   @override
@@ -377,8 +389,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ListTile(
                   leading: const Icon(Icons.info_outline),
                   title: const Text('关于应用'),
-                  subtitle: Text('版本 ${AppConstants.appVersion}'),
-                  onTap: () => _showAboutDialog(context),
+                  subtitle: Text('版本 $_appVersion'),
+                  trailing: const Icon(Icons.chevron_right, size: 20),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const AboutPage(),
+                      ),
+                    );
+                  },
                 ),
                 const Divider(height: 1, indent: 72),
                 ListTile(
@@ -389,86 +408,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   onTap: () => _checkForUpdates(context),
                 ),
               ],
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // 开发者信息
-          _buildSectionTitle('开发者信息'),
-          const SizedBox(height: 12),
-
-          _buildCard(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: Icon(Icons.code, color: Colors.blue.shade600),
-                  title: const Text('开发者'),
-                  subtitle: const Text('gaq'),
-                ),
-                const Divider(height: 1, indent: 72),
-                ListTile(
-                  leading: Icon(Icons.category, color: Colors.purple.shade600),
-                  title: const Text('项目'),
-                  subtitle: const Text('DailyHot - 每日热点聚合'),
-                ),
-                const Divider(height: 1, indent: 72),
-                ListTile(
-                  leading: Icon(Icons.public, color: Colors.green.shade600),
-                  title: const Text('GitHub 仓库'),
-                  subtitle: const Text('Gaq152/dailyhot-flutter'),
-                  trailing: const Icon(Icons.open_in_new, size: 20),
-                  onTap: () => _launchUrl('https://github.com/Gaq152/dailyhot-flutter'),
-                ),
-                const Divider(height: 1, indent: 72),
-                ListTile(
-                  leading: Icon(Icons.bug_report, color: Colors.orange.shade600),
-                  title: const Text('反馈问题'),
-                  subtitle: const Text('提交问题或建议'),
-                  trailing: const Icon(Icons.open_in_new, size: 20),
-                  onTap: () => _launchUrl('https://github.com/Gaq152/dailyhot-flutter/issues'),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // 技术栈
-          _buildCard(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.rocket_launch,
-                        size: 20,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        '技术栈',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _buildTechChip('Flutter', Colors.blue),
-                      _buildTechChip('Dart', Colors.cyan),
-                      _buildTechChip('Riverpod', Colors.purple),
-                      _buildTechChip('Hive', Colors.orange),
-                      _buildTechChip('Dio', Colors.green),
-                    ],
-                  ),
-                ],
-              ),
             ),
           ),
           const SizedBox(height: 24),
@@ -622,37 +561,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  void _showAboutDialog(BuildContext context) {
-    showAboutDialog(
-      context: context,
-      applicationName: AppConstants.appName,
-      applicationVersion: AppConstants.appVersion,
-      applicationLegalese: '© 2025 DailyHot',
-      children: [
-        const SizedBox(height: 24),
-        const Text('每日热点聚合应用'),
-      ],
-    );
-  }
-
   Future<void> _launchUrl(String url) async {
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
-  }
-
-  Widget _buildTechChip(String label, Color color) {
-    return Chip(
-      label: Text(
-        label,
-        style: const TextStyle(fontSize: 12),
-      ),
-      backgroundColor: color.withValues(alpha: 0.1),
-      side: BorderSide(color: color.withValues(alpha: 0.3), width: 1),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-      visualDensity: VisualDensity.compact,
-    );
   }
 
   Future<void> _checkForUpdates(BuildContext context) async {
