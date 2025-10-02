@@ -19,7 +19,7 @@ migrate_working_dir/
 
 # VS Code 文件夹包含启动配置和任务配置
 # 如果需要版本控制可以取消注释
-#.vscode/
+.vscode/
 
 # Flutter/Dart/Pub 相关
 **/doc/api/
