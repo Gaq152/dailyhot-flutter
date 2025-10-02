@@ -13,7 +13,8 @@ class AppConfig {
 
   /// 网络配置
   static const Duration connectTimeout = Duration(seconds: 12);
-  static const Duration receiveTimeout = Duration(seconds: 20);
+  /// 接收超时时间设置为40秒，适应serverless后端的冷启动时间
+  static const Duration receiveTimeout = Duration(seconds: 40);
 
   /// 缓存配置
   static const CacheConfig cacheConfig = CacheConfig(

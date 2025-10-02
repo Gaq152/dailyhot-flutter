@@ -2,6 +2,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/remote/api_client.dart';
 import '../../data/datasources/local/local_storage.dart';
 import '../../data/repositories/hot_list_repository.dart';
+import '../../data/services/request_queue_service.dart';
+
+/// Request Queue Service Provider
+final requestQueueServiceProvider = Provider<RequestQueueService>((ref) {
+  return RequestQueueService(maxConcurrent: 5);
+});
 
 /// API Client Provider
 final apiClientProvider = Provider<ApiClient>((ref) {

@@ -28,6 +28,11 @@ class HotListParams {
 final hotListProvider = FutureProvider.family<HotListResponse, HotListParams>(
   (ref, params) async {
     final repository = ref.watch(hotListRepositoryProvider);
-    return repository.getHotList(params.type, forceRefresh: params.forceRefresh);
+    final queueService = ref.watch(requestQueueServiceProvider);
+
+    // 使用请求队列来控制并发数，避免首次启动时大量请求导致超时
+    return queueService.enqueue(() {
+      return repository.getHotList(params.type, forceRefresh: params.forceRefresh);
+    });
   },
 );
