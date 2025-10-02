@@ -8,31 +8,31 @@ import '../../core/constants/hot_list_data.dart';
 class SettingsState {
   final ThemeMode themeMode;
   final bool themeAuto;
-  final bool linkOpenExternal;
   final double listFontSize;
   final List<HotListCategory> categories;
+  final bool autoCheckUpdate;
 
   SettingsState({
     required this.themeMode,
     required this.themeAuto,
-    required this.linkOpenExternal,
     required this.listFontSize,
     required this.categories,
+    required this.autoCheckUpdate,
   });
 
   SettingsState copyWith({
     ThemeMode? themeMode,
     bool? themeAuto,
-    bool? linkOpenExternal,
     double? listFontSize,
     List<HotListCategory>? categories,
+    bool? autoCheckUpdate,
   }) {
     return SettingsState(
       themeMode: themeMode ?? this.themeMode,
       themeAuto: themeAuto ?? this.themeAuto,
-      linkOpenExternal: linkOpenExternal ?? this.linkOpenExternal,
       listFontSize: listFontSize ?? this.listFontSize,
       categories: categories ?? this.categories,
+      autoCheckUpdate: autoCheckUpdate ?? this.autoCheckUpdate,
     );
   }
 }
@@ -45,9 +45,9 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       : super(SettingsState(
           themeMode: ThemeMode.system,
           themeAuto: true,
-          linkOpenExternal: true,
           listFontSize: 16.0,
           categories: HotListData.defaultCategories,
+          autoCheckUpdate: true,
         )) {
     _loadSettings();
   }
@@ -56,8 +56,8 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   Future<void> _loadSettings() async {
     final themeModeIndex = _prefs.getInt('themeMode') ?? 0;
     final themeAuto = _prefs.getBool('themeAuto') ?? true;
-    final linkOpenExternal = _prefs.getBool('linkOpenExternal') ?? true;
     final listFontSize = _prefs.getDouble('listFontSize') ?? 16.0;
+    final autoCheckUpdate = _prefs.getBool('auto_check_update') ?? true;
 
     // 加载分类列表
     final categoriesJson = _prefs.getStringList('categories');
@@ -98,9 +98,9 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     state = SettingsState(
       themeMode: ThemeMode.values[themeModeIndex],
       themeAuto: themeAuto,
-      linkOpenExternal: linkOpenExternal,
       listFontSize: listFontSize,
       categories: categories,
+      autoCheckUpdate: autoCheckUpdate,
     );
   }
 
@@ -121,12 +121,6 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       await _prefs.setInt('themeMode', ThemeMode.system.index);
       state = state.copyWith(themeMode: ThemeMode.system);
     }
-  }
-
-  /// 设置链接打开方式
-  Future<void> setLinkOpenExternal(bool external) async {
-    await _prefs.setBool('linkOpenExternal', external);
-    state = state.copyWith(linkOpenExternal: external);
   }
 
   /// 设置列表字体大小
@@ -163,15 +157,21 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     await updateCategories(HotListData.defaultCategories);
   }
 
+  /// 设置自动检查更新
+  Future<void> setAutoCheckUpdate(bool value) async {
+    await _prefs.setBool('auto_check_update', value);
+    state = state.copyWith(autoCheckUpdate: value);
+  }
+
   /// 重置所有设置
   Future<void> resetAll() async {
     await _prefs.clear();
     state = SettingsState(
       themeMode: ThemeMode.system,
       themeAuto: true,
-      linkOpenExternal: true,
       listFontSize: 16.0,
       categories: HotListData.defaultCategories,
+      autoCheckUpdate: true,
     );
   }
 }

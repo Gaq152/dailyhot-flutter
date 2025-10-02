@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/hot_list_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../../data/services/update_service.dart';
+import '../../../core/constants/app_constants.dart';
 import 'widgets/hot_card.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -14,6 +18,169 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> {
   bool _isRefreshing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 延迟执行自动检查更新，避免影响首屏渲染
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        _autoCheckUpdate();
+      }
+    });
+  }
+
+  /// 自动检查更新
+  Future<void> _autoCheckUpdate() async {
+    try {
+      // 检查是否启用自动检查更新
+      final settings = ref.read(settingsProvider);
+      if (!settings.autoCheckUpdate) {
+        return;
+      }
+
+      // 检查上次检查时间，避免频繁检查（24小时检查一次）
+      final prefs = await SharedPreferences.getInstance();
+      final lastCheckTime = prefs.getInt(AppConstants.keyLastCheckUpdateTime);
+      final now = DateTime.now().millisecondsSinceEpoch;
+
+      if (lastCheckTime != null) {
+        final diff = now - lastCheckTime;
+        const oneDayInMillis = 24 * 60 * 60 * 1000;
+        if (diff < oneDayInMillis) {
+          // 距离上次检查不足24小时，跳过
+          return;
+        }
+      }
+
+      // 执行检查更新
+      final updateService = UpdateService();
+      final updateInfo = await updateService.checkUpdate();
+
+      // 更新上次检查时间
+      await prefs.setInt(AppConstants.keyLastCheckUpdateTime, now);
+
+      // 如果有新版本，显示更新对话框
+      if (updateInfo != null && mounted) {
+        _showUpdateDialog(updateInfo);
+      }
+    } catch (e) {
+      // 静默失败，不打扰用户
+    }
+  }
+
+  /// 显示更新对话框
+  void _showUpdateDialog(UpdateInfo updateInfo) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              Icons.celebration,
+              color: Colors.orange.shade600,
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                '发现新版本',
+                style: TextStyle(fontSize: 20),
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 版本号标签
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    'v${updateInfo.version}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // 更新内容
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.new_releases,
+                            size: 18,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '更新内容',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        updateInfo.changelog,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          height: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('稍后'),
+          ),
+          FilledButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              final uri = Uri.parse(updateInfo.downloadUrl);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+            icon: const Icon(Icons.download, size: 18),
+            label: const Text('立即下载'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
