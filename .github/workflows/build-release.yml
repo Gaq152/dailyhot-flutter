@@ -82,8 +82,7 @@ jobs:
           # 创建 .env 文件
           echo "API_BASE_URL=$API_BASE_URL" > .env
 
-          echo "✅ 环境配置完成"
-          echo "📌 API Base URL: ${API_BASE_URL:0:30}..." # 只显示前30个字符
+          echo "✅ 环境配置完成（已从 GitHub Secrets 读取）"
 
       - name: 📦 获取依赖
         run: flutter pub get
