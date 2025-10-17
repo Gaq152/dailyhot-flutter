@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'data/datasources/local/local_storage.dart';
 import 'presentation/providers/dependency_providers.dart';
@@ -8,6 +9,9 @@ import 'app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 加载环境变量
+  await dotenv.load(fileName: '.env');
 
   // 初始化本地存储
   final localStorage = LocalStorage();
