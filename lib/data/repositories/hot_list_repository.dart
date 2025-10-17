@@ -16,7 +16,7 @@ class HotListRepository {
     String type, {
     bool forceRefresh = false,
   }) async {
-    // 1. 尝试从缓存读取
+    // 1. 尝试从缓存读取（即使过期也返回，避免冷启动时白屏）
     if (!forceRefresh) {
       final cached = localStorage.getHotListCache(type);
       if (cached != null) {
@@ -26,6 +26,27 @@ class HotListRepository {
           final filteredData = response.data
               .where((item) => item.title.trim().isNotEmpty)
               .toList();
+
+          // 检查缓存是否过期
+          final isExpired = localStorage.isCacheExpired(type);
+
+          // 如果缓存未过期，直接返回
+          if (!isExpired) {
+            return HotListResponse(
+              code: response.code,
+              message: response.message,
+              name: response.name,
+              title: response.title,
+              subtitle: response.subtitle,
+              description: response.description,
+              total: filteredData.length,
+              updateTime: response.updateTime,
+              data: filteredData,
+            );
+          }
+
+          // 如果缓存过期，先返回缓存数据，然后在后台更新
+          // 注意：这里先返回旧数据，避免用户看到加载中
           return HotListResponse(
             code: response.code,
             message: response.message,

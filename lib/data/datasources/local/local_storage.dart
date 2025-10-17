@@ -19,21 +19,12 @@ class LocalStorage {
     });
   }
 
-  /// 获取热榜数据缓存
+  /// 获取热榜数据缓存（不检查过期，由调用方决定是否使用）
   Map<String, dynamic>? getHotListCache(String type) {
     final cache = _cacheBox.get('hotlist_$type');
     if (cache == null) return null;
 
     try {
-      // 检查缓存是否过期（1小时）
-      final timestamp = cache['timestamp'] as int;
-      final now = DateTime.now().millisecondsSinceEpoch;
-      if (now - timestamp > 3600000) {
-        // 异步删除过期缓存，不阻塞主线程
-        Future.microtask(() => _cacheBox.delete('hotlist_$type'));
-        return null;
-      }
-
       // 转换 Map<dynamic, dynamic> 为 Map<String, dynamic>
       final data = cache['data'];
       if (data is Map) {
@@ -51,6 +42,20 @@ class LocalStorage {
       // 缓存数据格式错误，异步删除缓存
       Future.microtask(() => _cacheBox.delete('hotlist_$type'));
       return null;
+    }
+  }
+
+  /// 检查缓存是否过期（1小时）
+  bool isCacheExpired(String type) {
+    final cache = _cacheBox.get('hotlist_$type');
+    if (cache == null) return true;
+
+    try {
+      final timestamp = cache['timestamp'] as int;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      return now - timestamp > 3600000; // 1小时 = 3600000毫秒
+    } catch (e) {
+      return true;
     }
   }
 

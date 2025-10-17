@@ -263,17 +263,26 @@ class _HotCardState extends ConsumerState<HotCard> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.error_outline,
+              Icons.cloud_sync,
               size: isMobile ? 28 : 40,
-              color: Colors.orange.shade400,
+              color: Colors.blue.shade400,
             ),
             SizedBox(height: isMobile ? 4 : 8),
             Text(
-              '加载失败',
+              '服务启动中',
               style: TextStyle(
                 fontSize: isMobile ? 10 : 12,
                 fontWeight: FontWeight.w500,
                 color: Colors.grey.shade700,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 2),
+            Text(
+              '请稍候或点击重试',
+              style: TextStyle(
+                fontSize: isMobile ? 8 : 10,
+                color: Colors.grey.shade500,
               ),
               textAlign: TextAlign.center,
             ),
@@ -301,7 +310,7 @@ class _HotCardState extends ConsumerState<HotCard> {
                 );
               },
               icon: Icon(Icons.refresh, size: isMobile ? 11 : 14),
-              label: Text('重试', style: TextStyle(fontSize: isMobile ? 9 : 11)),
+              label: Text('立即重试', style: TextStyle(fontSize: isMobile ? 9 : 11)),
               style: OutlinedButton.styleFrom(
                 padding: EdgeInsets.symmetric(
                   horizontal: isMobile ? 6 : 10,

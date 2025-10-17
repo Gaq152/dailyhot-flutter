@@ -516,27 +516,23 @@ class _ListPageState extends ConsumerState<ListPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // 表情图标
+            // 云同步图标
             Container(
               width: 120,
               height: 120,
               decoration: BoxDecoration(
-                color: Colors.orange.shade100,
+                color: Colors.blue.shade50,
                 shape: BoxShape.circle,
               ),
-              child: Center(
-                child: Text(
-                  '😵',
-                  style: TextStyle(
-                    fontSize: 64,
-                    height: 1.0,
-                  ),
-                ),
+              child: Icon(
+                Icons.cloud_sync,
+                size: 64,
+                color: Colors.blue.shade400,
               ),
             ),
             const SizedBox(height: 32),
             Text(
-              '哎呀，加载失败了',
+              '服务启动中',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -545,7 +541,7 @@ class _ListPageState extends ConsumerState<ListPage> {
             ),
             const SizedBox(height: 12),
             Text(
-              '生活总会遇到不如意的事情',
+              '首次访问需要一点时间，请稍候...',
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey.shade600,
@@ -586,7 +582,7 @@ class _ListPageState extends ConsumerState<ListPage> {
                 }
               },
               icon: const Icon(Icons.refresh, size: 20),
-              label: const Text('重试', style: TextStyle(fontSize: 16)),
+              label: const Text('立即重试', style: TextStyle(fontSize: 16)),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                 shape: RoundedRectangleBorder(

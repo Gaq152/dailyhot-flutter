@@ -40,24 +40,27 @@ class ApiClient {
       return client;
     };
 
-    // 添加重试拦截器
+    // 添加重试拦截器（适配 serverless 冷启动）
     _dio.interceptors.add(
       InterceptorsWrapper(
         onError: (error, handler) async {
-          // 对于连接错误，尝试重试
+          // 对于连接错误和超时错误，尝试重试（serverless 冷启动场景）
           if (error.type == DioExceptionType.connectionError ||
+              error.type == DioExceptionType.connectionTimeout ||
+              error.type == DioExceptionType.receiveTimeout ||
+              error.type == DioExceptionType.sendTimeout ||
               error.type == DioExceptionType.unknown) {
-            // 最多重试2次
+            // 最多重试5次（serverless 冷启动可能需要更多时间）
             if (error.requestOptions.extra['retryCount'] == null) {
               error.requestOptions.extra['retryCount'] = 0;
             }
 
             final retryCount = error.requestOptions.extra['retryCount'] as int;
-            if (retryCount < 2) {
+            if (retryCount < 5) {
               error.requestOptions.extra['retryCount'] = retryCount + 1;
 
-              // 等待一段时间后重试
-              await Future.delayed(Duration(milliseconds: 500 * (retryCount + 1)));
+              // 等待时间：2秒、4秒、6秒、8秒、10秒
+              await Future.delayed(Duration(seconds: 2 * (retryCount + 1)));
 
               try {
                 final response = await _dio.fetch(error.requestOptions);
