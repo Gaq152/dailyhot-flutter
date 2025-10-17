@@ -31,6 +31,9 @@ migrate_working_dir/
 .pub/
 /build/
 
+# 环境变量文件（包含敏感配置，不要提交）
+.env
+
 # 符号化相关
 app.*.symbols
 

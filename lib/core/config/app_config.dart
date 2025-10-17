@@ -1,10 +1,21 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 /// 应用配置
 ///
 /// 使用腾讯云CloudBase部署的API服务
 class AppConfig {
-  /// API 基础地址（腾讯云CloudBase云托管）
-  static const String apiBaseUrl =
-      'https://daliyhot-vercel-190574-4-1324174178.sh.run.tcloudbase.com';
+  /// API 基础地址（从环境变量读取）
+  static String get apiBaseUrl {
+    final url = dotenv.env['API_BASE_URL'];
+    if (url == null || url.isEmpty) {
+      throw Exception(
+        '未配置 API_BASE_URL 环境变量！\n'
+        '请确保项目根目录存在 .env 文件，并配置 API_BASE_URL。\n'
+        '参考 .env.example 文件进行配置。',
+      );
+    }
+    return url;
+  }
 
   /// 应用信息
   static const String appName = '每日热点';

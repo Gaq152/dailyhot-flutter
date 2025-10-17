@@ -67,6 +67,24 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: 🔧 创建环境配置
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+        run: |
+          echo "⚙️ 创建 .env 配置文件..."
+
+          # 验证 API_BASE_URL secret 是否存在
+          if [ -z "$API_BASE_URL" ]; then
+            echo "❌ 错误: API_BASE_URL secret 未配置"
+            exit 1
+          fi
+
+          # 创建 .env 文件
+          echo "API_BASE_URL=$API_BASE_URL" > .env
+
+          echo "✅ 环境配置完成"
+          echo "📌 API Base URL: ${API_BASE_URL:0:30}..." # 只显示前30个字符
+
       - name: 📦 获取依赖
         run: flutter pub get
 
