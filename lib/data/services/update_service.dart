@@ -7,12 +7,14 @@ import 'package:package_info_plus/package_info_plus.dart';
 class UpdateInfo {
   final String version;
   final String downloadUrl;
+  final List<String> mirrorUrls;  // 多个下载源（降级策略）
   final String changelog;
   final DateTime publishedAt;
 
   UpdateInfo({
     required this.version,
     required this.downloadUrl,
+    this.mirrorUrls = const [],
     required this.changelog,
     required this.publishedAt,
   });
@@ -25,16 +27,39 @@ class UpdateInfo {
       orElse: () => {'browser_download_url': ''},
     );
 
+    final originalUrl = apkAsset['browser_download_url'] ?? '';
+
+    // 构建多级下载源（优先级从高到低）
+    final mirrors = _buildMirrorUrls(originalUrl);
+
     // 从 Release body 中提取纯粹的更新内容
     final rawBody = json['body'] ?? '';
     final changelog = _extractChangelog(rawBody);
 
     return UpdateInfo(
       version: (json['tag_name'] as String).replaceFirst('v', ''),
-      downloadUrl: apkAsset['browser_download_url'] ?? '',
+      downloadUrl: mirrors.isNotEmpty ? mirrors.first : originalUrl,  // 默认使用第一个镜像
+      mirrorUrls: mirrors,  // 保存所有镜像供降级使用
       changelog: changelog,
       publishedAt: DateTime.parse(json['published_at']),
     );
+  }
+
+  /// 构建多级下载源（三级降级策略）
+  static List<String> _buildMirrorUrls(String originalUrl) {
+    if (originalUrl.isEmpty) return [];
+
+    return [
+      // 第一优先级：ghfast.top 镜像
+      originalUrl.replaceFirst(
+        'https://github.com',
+        'https://ghfast.top/https://github.com',
+      ),
+      // 第二优先级：自建 Cloudflare Workers
+      'https://dailyhot-proxy.anlife123456.workers.dev/$originalUrl',
+      // 第三优先级：GitHub 原始地址
+      originalUrl,
+    ];
   }
 
   /// 从 Release body 中提取 CHANGELOG 部分
