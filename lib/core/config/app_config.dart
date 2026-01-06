@@ -19,13 +19,12 @@ class AppConfig {
 
   /// 应用信息
   static const String appName = '每日热点';
-  static const String appVersion = '1.3.5';
+  static const String appVersion = '1.3.6';
   static const String appDescription = '每日热点聚合';
 
-  /// 网络配置
-  static const Duration connectTimeout = Duration(seconds: 12);
-  /// 接收超时时间设置为40秒，适应serverless后端的冷启动时间
-  static const Duration receiveTimeout = Duration(seconds: 40);
+  /// 网络配置（Deno Deploy 无冷启动，可以使用较短超时）
+  static const Duration connectTimeout = Duration(seconds: 10);
+  static const Duration receiveTimeout = Duration(seconds: 15);
 
   /// 缓存配置
   static const CacheConfig cacheConfig = CacheConfig(

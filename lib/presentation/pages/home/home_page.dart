@@ -226,6 +226,117 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
+  /// 刷新所有榜单数据
+  Future<void> _refreshAllData() async {
+    setState(() => _isRefreshing = true);
+
+    try {
+      // 获取所有显示的榜单
+      final settings = ref.read(settingsProvider);
+      final categories = settings.categories.where((c) => c.show).toList();
+
+      int successCount = 0;
+      int failCount = 0;
+      int totalItems = 0;
+
+      // 并行刷新所有榜单（使用 forceRefresh: true 绕过 API 服务的 Redis 缓存）
+      final futures = categories.map((category) {
+        return ref.read(
+          hotListProvider(
+            HotListParams(type: category.name, forceRefresh: true),
+          ).future,
+        );
+      }).toList();
+
+      final results = await Future.wait(futures, eagerError: false);
+
+      // 统计结果
+      for (final result in results) {
+        if (result.hasError) {
+          failCount++;
+        } else {
+          successCount++;
+          totalItems += result.data?.data.length ?? 0;
+        }
+      }
+
+      // 刷新后使缓存的 provider 失效
+      for (final category in categories) {
+        ref.invalidate(
+          hotListProvider(
+            HotListParams(type: category.name, forceRefresh: false),
+          ),
+        );
+      }
+
+      // 显示刷新结果提示
+      if (mounted) {
+        String message;
+        Color backgroundColor;
+        IconData icon;
+
+        if (failCount == 0) {
+          message = '已刷新 $successCount 个榜单，共 $totalItems 条数据';
+          backgroundColor = Colors.green.shade600;
+          icon = Icons.check_circle;
+        } else if (successCount == 0) {
+          message = '刷新失败，请检查网络连接';
+          backgroundColor = Colors.red.shade600;
+          icon = Icons.error_outline;
+        } else {
+          message = '已刷新 $successCount 个榜单，$failCount 个失败';
+          backgroundColor = Colors.orange.shade600;
+          icon = Icons.warning_amber;
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(icon, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Expanded(child: Text(message)),
+              ],
+            ),
+            backgroundColor: backgroundColor,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      // 整体出错时的提示
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 20),
+                SizedBox(width: 12),
+                Text('刷新失败，请稍后重试'),
+              ],
+            ),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isRefreshing = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
@@ -246,43 +357,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.refresh),
-            onPressed: _isRefreshing ? null : () async {
-              setState(() => _isRefreshing = true);
-
-              // 等待动画淡出
-              await Future.delayed(const Duration(milliseconds: 200));
-
-              // 刷新所有显示的榜单数据
-              final settings = ref.read(settingsProvider);
-              final categories = settings.categories.where((c) => c.show).toList();
-
-              // 刷新所有榜单
-              for (int i = 0; i < categories.length; i++) {
-                final categoryName = categories[i].name;
-
-                // invalidate 并触发刷新
-                ref.invalidate(
-                  hotListProvider(
-                    HotListParams(type: categoryName, forceRefresh: false),
-                  ),
-                );
-
-                // 触发强制刷新
-                // ignore: unawaited_futures
-                ref.read(
-                  hotListProvider(
-                    HotListParams(type: categoryName, forceRefresh: true),
-                  ).future,
-                );
-              }
-
-              // 等待刷新完成
-              await Future.delayed(const Duration(milliseconds: 500));
-
-              if (mounted) {
-                setState(() => _isRefreshing = false);
-              }
-            },
+            onPressed: _isRefreshing ? null : _refreshAllData,
             tooltip: '刷新所有榜单',
           ),
           IconButton(

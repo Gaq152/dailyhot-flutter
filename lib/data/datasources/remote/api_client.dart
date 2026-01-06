@@ -40,27 +40,27 @@ class ApiClient {
       return client;
     };
 
-    // 添加重试拦截器（适配 serverless 冷启动）
+    // 添加重试拦截器（Deno Deploy 无冷启动，减少重试次数）
     _dio.interceptors.add(
       InterceptorsWrapper(
         onError: (error, handler) async {
-          // 对于连接错误和超时错误，尝试重试（serverless 冷启动场景）
+          // 对于连接错误和超时错误，尝试重试
           if (error.type == DioExceptionType.connectionError ||
               error.type == DioExceptionType.connectionTimeout ||
               error.type == DioExceptionType.receiveTimeout ||
               error.type == DioExceptionType.sendTimeout ||
               error.type == DioExceptionType.unknown) {
-            // 最多重试5次（serverless 冷启动可能需要更多时间）
+            // 最多重试2次（Deno Deploy 无冷启动，不需要太多重试）
             if (error.requestOptions.extra['retryCount'] == null) {
               error.requestOptions.extra['retryCount'] = 0;
             }
 
             final retryCount = error.requestOptions.extra['retryCount'] as int;
-            if (retryCount < 5) {
+            if (retryCount < 2) {
               error.requestOptions.extra['retryCount'] = retryCount + 1;
 
-              // 等待时间：2秒、4秒、6秒、8秒、10秒
-              await Future.delayed(Duration(seconds: 2 * (retryCount + 1)));
+              // 等待时间：1秒、2秒
+              await Future.delayed(Duration(seconds: retryCount + 1));
 
               try {
                 final response = await _dio.fetch(error.requestOptions);
@@ -101,9 +101,11 @@ class ApiClient {
   }
 
   /// 获取热榜数据
-  Future<HotListResponse> getHotList(String type) async {
+  /// [forceRefresh] 为 true 时，添加 cache=false 参数绕过 API 服务的 Redis 缓存
+  Future<HotListResponse> getHotList(String type, {bool forceRefresh = false}) async {
     try {
-      final response = await _dio.get('/$type');
+      final queryParams = forceRefresh ? {'cache': 'false'} : null;
+      final response = await _dio.get('/$type', queryParameters: queryParams);
       try {
         return HotListResponse.fromJson(response.data);
       } catch (e, stackTrace) {

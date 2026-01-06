@@ -85,7 +85,7 @@ class HotListRepository {
     try {
       // 网络请求和最小延迟并行执行，确保 loading 动画可见
       final results = await Future.wait([
-        apiClient.getHotList(type),
+        apiClient.getHotList(type, forceRefresh: forceRefresh),
         Future.delayed(const Duration(milliseconds: 300)),
       ]);
       final response = results[0] as HotListResponse;

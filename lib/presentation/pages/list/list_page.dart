@@ -27,7 +27,7 @@ class _ListPageState extends ConsumerState<ListPage> {
   bool _isRefreshing = false;
   int _refreshTrigger = 0; // 用于触发列表项重新动画
   bool _hasPendingUpdate = false;
-  String? _lastShownErrorType; // 避免重复显示相同错误
+  bool _errorShownForCurrentData = false; // 当前数据的错误是否已显示过
   final ScrollController _tabScrollController = ScrollController();
   bool _initialScrollDone = false;
 
@@ -41,6 +41,8 @@ class _ListPageState extends ConsumerState<ListPage> {
   @override
   void dispose() {
     _tabScrollController.dispose();
+    // 离开页面时清除 SnackBar
+    ScaffoldMessenger.of(context).clearSnackBars();
     super.dispose();
   }
 
@@ -54,14 +56,12 @@ class _ListPageState extends ConsumerState<ListPage> {
     }
   }
 
-  /// 显示错误提示 SnackBar
+  /// 显示错误提示 SnackBar（每次数据加载只显示一次）
   void _showErrorSnackBar(DataResult result) {
-    // 避免重复显示相同错误
-    final errorKey = '${currentType}_${result.errorType}';
-    if (_lastShownErrorType == errorKey) return;
-    _lastShownErrorType = errorKey;
+    // 避免同一份数据重复显示
+    if (_errorShownForCurrentData) return;
+    _errorShownForCurrentData = true;
 
-    // 使用 addPostFrameCallback 确保在 build 完成后显示
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
 
@@ -86,12 +86,7 @@ class _ListPageState extends ConsumerState<ListPage> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          duration: const Duration(seconds: 4),
-          action: SnackBarAction(
-            label: '重试',
-            textColor: Colors.white,
-            onPressed: () => _refreshData(),
-          ),
+          duration: const Duration(seconds: 3),
         ),
       );
     });
@@ -115,31 +110,92 @@ class _ListPageState extends ConsumerState<ListPage> {
 
   /// 刷新数据
   Future<void> _refreshData() async {
-    setState(() => _isRefreshing = true);
+    setState(() {
+      _isRefreshing = true;
+      _errorShownForCurrentData = false; // 重置，允许显示新错误
+    });
 
-    await Future.delayed(const Duration(milliseconds: 150));
+    try {
+      // 使用 forceRefresh: true 触发强制刷新（绕过 API 服务的 Redis 缓存）
+      final result = await ref.read(
+        hotListProvider(
+          HotListParams(type: currentType, forceRefresh: true),
+        ).future,
+      );
 
-    ref.invalidate(
-      hotListProvider(
-        HotListParams(type: currentType, forceRefresh: false),
-      ),
-    );
+      // 刷新后使缓存的 provider 失效，以便下次使用新数据
+      ref.invalidate(
+        hotListProvider(
+          HotListParams(type: currentType, forceRefresh: false),
+        ),
+      );
 
-    // ignore: unawaited_futures
-    ref.read(
-      hotListProvider(
-        HotListParams(type: currentType, forceRefresh: true),
-      ).future,
-    );
+      setState(() => _refreshTrigger++);
 
-    // 重置错误显示标记，允许显示新错误
-    _lastShownErrorType = null;
-    setState(() => _refreshTrigger++);
+      // 显示刷新结果提示
+      if (mounted) {
+        final itemCount = result.data?.data.length ?? 0;
+        final isFromCache = result.source != DataSource.network;
 
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    if (mounted) {
-      setState(() => _isRefreshing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(
+                  result.hasError ? Icons.warning_amber : Icons.check_circle,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    result.hasError
+                        ? '刷新失败，显示缓存数据'
+                        : isFromCache
+                            ? '已加载 $itemCount 条数据（缓存）'
+                            : '已刷新 $itemCount 条数据',
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: result.hasError
+                ? Colors.orange.shade700
+                : Colors.green.shade600,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      // 刷新出错时的提示
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 20),
+                SizedBox(width: 12),
+                Text('刷新失败，请稍后重试'),
+              ],
+            ),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isRefreshing = false);
+      }
     }
   }
 
