@@ -239,6 +239,15 @@ class _HomePageState extends ConsumerState<HomePage> {
       int failCount = 0;
       int totalItems = 0;
 
+      // 先 invalidate 所有 forceRefresh: true 的 provider，确保重新执行网络请求
+      for (final category in categories) {
+        ref.invalidate(
+          hotListProvider(
+            HotListParams(type: category.name, forceRefresh: true),
+          ),
+        );
+      }
+
       // 并行刷新所有榜单（使用 forceRefresh: true 绕过 API 服务的 Redis 缓存）
       final futures = categories.map((category) {
         return ref.read(
