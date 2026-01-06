@@ -116,6 +116,14 @@ class _ListPageState extends ConsumerState<ListPage> {
     });
 
     try {
+      // 先 invalidate provider，确保重新执行网络请求
+      // 注意：必须在 read 之前 invalidate，否则会返回缓存结果
+      ref.invalidate(
+        hotListProvider(
+          HotListParams(type: currentType, forceRefresh: true),
+        ),
+      );
+
       // 使用 forceRefresh: true 触发强制刷新（绕过 API 服务的 Redis 缓存）
       final result = await ref.read(
         hotListProvider(
@@ -123,7 +131,7 @@ class _ListPageState extends ConsumerState<ListPage> {
         ).future,
       );
 
-      // 刷新后使缓存的 provider 失效，以便下次使用新数据
+      // 刷新后也使 forceRefresh: false 的 provider 失效，以便正常浏览使用新数据
       ref.invalidate(
         hotListProvider(
           HotListParams(type: currentType, forceRefresh: false),
@@ -347,12 +355,20 @@ class _ListPageState extends ConsumerState<ListPage> {
   Widget _buildCategoryTabs(List categories) {
     // 首次进入或切换时滚动到当前选中项
     final currentIndex = categories.indexWhere((c) => c.name == currentType);
-    if (currentIndex > 0) {
+    if (currentIndex >= 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!_tabScrollController.hasClients) return;
 
-        // 每个 chip 大约 100 宽度，滚动到让选中项居中
-        final targetOffset = (currentIndex * 100.0 - 100).clamp(
+        // 计算让选中项居中的目标偏移量
+        // 每个 chip 宽度约 100（包含 padding）
+        const double itemWidth = 100.0;
+        const double horizontalPadding = 12.0; // ListView 的水平 padding
+        final double viewportWidth = _tabScrollController.position.viewportDimension;
+
+        // 计算 item 中心位置（相对于内容起点）
+        final double itemCenter = horizontalPadding + currentIndex * itemWidth + itemWidth / 2;
+        // 让 item 中心对齐到视口中心
+        final double targetOffset = (itemCenter - viewportWidth / 2).clamp(
           0.0,
           _tabScrollController.position.maxScrollExtent,
         );
