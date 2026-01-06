@@ -19,7 +19,7 @@ class AppConfig {
 
   /// 应用信息
   static const String appName = '每日热点';
-  static const String appVersion = '1.3.3';
+  static const String appVersion = '1.3.4';
   static const String appDescription = '每日热点聚合';
 
   /// 网络配置
