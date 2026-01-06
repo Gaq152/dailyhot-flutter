@@ -273,8 +273,7 @@ _待添加_
 欢迎提交 Issue 和 Pull Request！
 
 本项目基于以下开源项目：
-- [DailyHotApi](https://github.com/imsyy/DailyHotApi) - 后端 API 服务
-- [DailyHot](https://github.com/imsyy/DailyHot) - Vue 版前端
+- [DailyHotApi](https://github.com/Gaq152/DailyHotApi) - 后端 API 服务
 
 ## 📄 开源协议
 
