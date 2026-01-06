@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../data/models/hot_list_category.dart';
+import '../../../../data/models/data_result.dart';
 import '../../../providers/hot_list_provider.dart';
 
 class HotCard extends ConsumerStatefulWidget {
@@ -34,13 +35,34 @@ class _HotCardState extends ConsumerState<HotCard> {
       child: InkWell(
         onTap: widget.onTap,
         child: hotListAsync.when(
-          data: (data) => Column(
-            children: [
-              _buildHeader(context, data.subtitle),
-              Expanded(child: _buildList(context, data.data.take(5).toList())),
-              _buildFooter(context, data.updateTime),
-            ],
-          ),
+          data: (result) {
+            // 处理 DataResult
+            if (result.isFailed) {
+              // 完全失败，显示错误
+              return Column(
+                children: [
+                  _buildHeader(context, null),
+                  Expanded(child: _buildError(ref, result.errorType)),
+                  _buildFooter(context, null, errorType: result.errorType),
+                ],
+              );
+            }
+
+            // 有数据（可能是网络或缓存）
+            final data = result.data!;
+            return Column(
+              children: [
+                _buildHeader(context, data.subtitle),
+                Expanded(child: _buildList(context, data.data.take(5).toList())),
+                _buildFooter(
+                  context,
+                  data.updateTime,
+                  isStale: result.isStaleData,
+                  errorType: result.hasError ? result.errorType : null,
+                ),
+              ],
+            );
+          },
           loading: () => Column(
             children: [
               _buildHeader(context, null),
@@ -51,8 +73,8 @@ class _HotCardState extends ConsumerState<HotCard> {
           error: (err, stack) => Column(
             children: [
               _buildHeader(context, null),
-              Expanded(child: _buildError(ref)),
-              _buildFooter(context, '获取失败'),
+              Expanded(child: _buildError(ref, DataErrorType.unknownError)),
+              _buildFooter(context, null, errorType: DataErrorType.unknownError),
             ],
           ),
         ),
@@ -248,9 +270,43 @@ class _HotCardState extends ConsumerState<HotCard> {
     );
   }
 
-  Widget _buildError(WidgetRef ref) {
+  Widget _buildError(WidgetRef ref, DataErrorType errorType) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isMobile = screenWidth < 800;
+
+    // 根据错误类型选择图标和文字
+    IconData icon;
+    Color iconColor;
+    String title;
+    String subtitle;
+
+    switch (errorType) {
+      case DataErrorType.networkError:
+        icon = Icons.wifi_off;
+        iconColor = Colors.orange.shade400;
+        title = '网络连接失败';
+        subtitle = '请检查网络设置';
+      case DataErrorType.serverError:
+        icon = Icons.cloud_off;
+        iconColor = Colors.red.shade400;
+        title = '服务器异常';
+        subtitle = '请稍后重试';
+      case DataErrorType.parseError:
+        icon = Icons.error_outline;
+        iconColor = Colors.purple.shade400;
+        title = '数据异常';
+        subtitle = '请稍后重试';
+      case DataErrorType.timeoutError:
+        icon = Icons.access_time;
+        iconColor = Colors.blue.shade400;
+        title = '服务启动中';
+        subtitle = '请稍候或点击重试';
+      default:
+        icon = Icons.cloud_sync;
+        iconColor = Colors.blue.shade400;
+        title = '加载失败';
+        subtitle = '请稍候或点击重试';
+    }
 
     return Center(
       child: Padding(
@@ -263,13 +319,13 @@ class _HotCardState extends ConsumerState<HotCard> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.cloud_sync,
+              icon,
               size: isMobile ? 28 : 40,
-              color: Colors.blue.shade400,
+              color: iconColor,
             ),
             SizedBox(height: isMobile ? 4 : 8),
             Text(
-              '服务启动中',
+              title,
               style: TextStyle(
                 fontSize: isMobile ? 10 : 12,
                 fontWeight: FontWeight.w500,
@@ -277,9 +333,9 @@ class _HotCardState extends ConsumerState<HotCard> {
               ),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 2),
+            const SizedBox(height: 2),
             Text(
-              '请稍候或点击重试',
+              subtitle,
               style: TextStyle(
                 fontSize: isMobile ? 8 : 10,
                 color: Colors.grey.shade500,
@@ -326,9 +382,45 @@ class _HotCardState extends ConsumerState<HotCard> {
     );
   }
 
-  Widget _buildFooter(BuildContext context, String? updateTime) {
+  Widget _buildFooter(
+    BuildContext context,
+    String? updateTime, {
+    bool isStale = false,
+    DataErrorType? errorType,
+  }) {
     final formattedTime = _formatUpdateTime(updateTime);
     final colorScheme = Theme.of(context).colorScheme;
+
+    // 根据状态决定显示内容
+    String displayText = formattedTime;
+    Color? textColor;
+    IconData? statusIcon;
+
+    if (errorType != null && errorType != DataErrorType.none) {
+      // 有错误发生
+      switch (errorType) {
+        case DataErrorType.networkError:
+          displayText = isStale ? '网络失败·缓存数据' : '网络连接失败';
+          textColor = Colors.orange.shade700;
+          statusIcon = Icons.wifi_off;
+        case DataErrorType.serverError:
+          displayText = isStale ? '服务异常·缓存数据' : '服务器异常';
+          textColor = Colors.red.shade700;
+          statusIcon = Icons.cloud_off;
+        case DataErrorType.timeoutError:
+          displayText = isStale ? '请求超时·缓存数据' : '请求超时';
+          textColor = Colors.blue.shade700;
+          statusIcon = Icons.access_time;
+        case DataErrorType.parseError:
+          displayText = isStale ? '解析失败·缓存数据' : '数据异常';
+          textColor = Colors.purple.shade700;
+          statusIcon = Icons.error_outline;
+        default:
+          displayText = isStale ? '加载失败·缓存数据' : '加载失败';
+          textColor = Colors.grey.shade700;
+          statusIcon = Icons.warning_amber;
+      }
+    }
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -342,21 +434,35 @@ class _HotCardState extends ConsumerState<HotCard> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
-            child: Text(
-              formattedTime,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    fontSize: 11,
+            child: Row(
+              children: [
+                if (statusIcon != null) ...[
+                  Icon(
+                    statusIcon,
+                    size: 12,
+                    color: textColor,
                   ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+                  const SizedBox(width: 4),
+                ],
+                Expanded(
+                  child: Text(
+                    displayText,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: textColor ?? colorScheme.onSurfaceVariant,
+                          fontSize: 11,
+                        ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(width: 8),
           Icon(
             Icons.chevron_right,
             size: 16,
-            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+            color: colorScheme.onSurfaceVariant.withAlpha(153),
           ),
         ],
       ),

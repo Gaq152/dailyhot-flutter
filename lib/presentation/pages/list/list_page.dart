@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/hot_list_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../data/models/data_result.dart';
 
 class ListPage extends ConsumerStatefulWidget {
   final String type;
@@ -26,6 +27,7 @@ class _ListPageState extends ConsumerState<ListPage> {
   bool _isRefreshing = false;
   int _refreshTrigger = 0; // 用于触发列表项重新动画
   bool _hasPendingUpdate = false;
+  String? _lastShownErrorType; // 避免重复显示相同错误
 
   @override
   void initState() {
@@ -41,6 +43,95 @@ class _ListPageState extends ConsumerState<ListPage> {
       setState(() {
         _hasPendingUpdate = hasPending;
       });
+    }
+  }
+
+  /// 显示错误提示 SnackBar
+  void _showErrorSnackBar(DataResult result) {
+    // 避免重复显示相同错误
+    final errorKey = '${currentType}_${result.errorType}';
+    if (_lastShownErrorType == errorKey) return;
+    _lastShownErrorType = errorKey;
+
+    // 使用 addPostFrameCallback 确保在 build 完成后显示
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(
+                _getErrorIcon(result.errorType),
+                color: Colors.white,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(result.userFriendlyMessage),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.orange.shade700,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: '重试',
+            textColor: Colors.white,
+            onPressed: () => _refreshData(),
+          ),
+        ),
+      );
+    });
+  }
+
+  /// 根据错误类型获取图标
+  IconData _getErrorIcon(DataErrorType errorType) {
+    switch (errorType) {
+      case DataErrorType.networkError:
+        return Icons.wifi_off;
+      case DataErrorType.serverError:
+        return Icons.cloud_off;
+      case DataErrorType.parseError:
+        return Icons.error_outline;
+      case DataErrorType.timeoutError:
+        return Icons.access_time;
+      default:
+        return Icons.warning_amber;
+    }
+  }
+
+  /// 刷新数据
+  Future<void> _refreshData() async {
+    setState(() => _isRefreshing = true);
+
+    await Future.delayed(const Duration(milliseconds: 150));
+
+    ref.invalidate(
+      hotListProvider(
+        HotListParams(type: currentType, forceRefresh: false),
+      ),
+    );
+
+    // ignore: unawaited_futures
+    ref.read(
+      hotListProvider(
+        HotListParams(type: currentType, forceRefresh: true),
+      ).future,
+    );
+
+    // 重置错误显示标记，允许显示新错误
+    _lastShownErrorType = null;
+    setState(() => _refreshTrigger++);
+
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (mounted) {
+      setState(() => _isRefreshing = false);
     }
   }
 
@@ -64,7 +155,7 @@ class _ListPageState extends ConsumerState<ListPage> {
     return Scaffold(
       appBar: AppBar(
         title: hotListAsync.maybeWhen(
-          data: (data) => _buildAppBarTitle(data, currentCategory),
+          data: (result) => _buildAppBarTitle(result.data, currentCategory),
           orElse: () => _buildAppBarTitle(null, currentCategory),
         ),
         actions: [
@@ -76,37 +167,7 @@ class _ListPageState extends ConsumerState<ListPage> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.refresh),
-            onPressed: _isRefreshing ? null : () async {
-              setState(() => _isRefreshing = true);
-
-              // 等待淡出动画
-              await Future.delayed(const Duration(milliseconds: 150));
-
-              // invalidate 并触发刷新
-              ref.invalidate(
-                hotListProvider(
-                  HotListParams(type: currentType, forceRefresh: false),
-                ),
-              );
-
-              // 触发强制刷新
-              // ignore: unawaited_futures
-              ref.read(
-                hotListProvider(
-                  HotListParams(type: currentType, forceRefresh: true),
-                ).future,
-              );
-
-              // 增加刷新触发器，触发列表项重新动画
-              setState(() => _refreshTrigger++);
-
-              // 等待刷新完成
-              await Future.delayed(const Duration(milliseconds: 500));
-
-              if (mounted) {
-                setState(() => _isRefreshing = false);
-              }
-            },
+            onPressed: _isRefreshing ? null : _refreshData,
             tooltip: '刷新数据',
           ),
           IconButton(
@@ -124,9 +185,26 @@ class _ListPageState extends ConsumerState<ListPage> {
         ),
       ),
       body: hotListAsync.when(
-        data: (data) => _buildContent(data),
+        data: (result) {
+          // 处理 DataResult
+          if (result.isFailed) {
+            // 完全失败，显示错误页面
+            return _buildError(result.errorType, result.failureMessage);
+          }
+
+          // 有数据（可能是网络数据或缓存数据）
+          // 如果使用了过期缓存，显示提示
+          if (result.isStaleData && result.hasError) {
+            _showErrorSnackBar(result);
+          }
+
+          return _buildContent(result.data!);
+        },
         loading: () => _buildLoadingSkeleton(),
-        error: (error, stack) => _buildError(),
+        error: (error, stack) => _buildError(
+          DataErrorType.unknownError,
+          '加载失败，请稍后重试',
+        ),
       ),
     );
   }
@@ -509,30 +587,57 @@ class _ListPageState extends ConsumerState<ListPage> {
     );
   }
 
-  Widget _buildError() {
+  Widget _buildError(DataErrorType errorType, String message) {
+    // 根据错误类型选择图标和颜色
+    IconData icon;
+    Color iconColor;
+    String title;
+
+    switch (errorType) {
+      case DataErrorType.networkError:
+        icon = Icons.wifi_off;
+        iconColor = Colors.orange.shade400;
+        title = '网络连接失败';
+      case DataErrorType.serverError:
+        icon = Icons.cloud_off;
+        iconColor = Colors.red.shade400;
+        title = '服务器异常';
+      case DataErrorType.parseError:
+        icon = Icons.error_outline;
+        iconColor = Colors.purple.shade400;
+        title = '数据异常';
+      case DataErrorType.timeoutError:
+        icon = Icons.access_time;
+        iconColor = Colors.blue.shade400;
+        title = '服务启动中';
+      default:
+        icon = Icons.cloud_sync;
+        iconColor = Colors.blue.shade400;
+        title = '加载失败';
+    }
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // 云同步图标
             Container(
               width: 120,
               height: 120,
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: iconColor.withAlpha(30),
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                Icons.cloud_sync,
+                icon,
                 size: 64,
-                color: Colors.blue.shade400,
+                color: iconColor,
               ),
             ),
             const SizedBox(height: 32),
             Text(
-              '服务启动中',
+              title,
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -541,7 +646,7 @@ class _ListPageState extends ConsumerState<ListPage> {
             ),
             const SizedBox(height: 12),
             Text(
-              '首次访问需要一点时间，请稍候...',
+              message,
               style: TextStyle(
                 fontSize: 16,
                 color: Colors.grey.shade600,
@@ -550,37 +655,7 @@ class _ListPageState extends ConsumerState<ListPage> {
             ),
             const SizedBox(height: 40),
             FilledButton.icon(
-              onPressed: () async {
-                setState(() => _isRefreshing = true);
-
-                // 等待淡出动画
-                await Future.delayed(const Duration(milliseconds: 150));
-
-                // invalidate 并触发刷新
-                ref.invalidate(
-                  hotListProvider(
-                    HotListParams(type: currentType, forceRefresh: false),
-                  ),
-                );
-
-                // 触发强制刷新
-                // ignore: unawaited_futures
-                ref.read(
-                  hotListProvider(
-                    HotListParams(type: currentType, forceRefresh: true),
-                  ).future,
-                );
-
-                // 增加刷新触发器，触发列表项重新动画
-                setState(() => _refreshTrigger++);
-
-                // 等待刷新完成
-                await Future.delayed(const Duration(milliseconds: 500));
-
-                if (mounted) {
-                  setState(() => _isRefreshing = false);
-                }
-              },
+              onPressed: _refreshData,
               icon: const Icon(Icons.refresh, size: 20),
               label: const Text('立即重试', style: TextStyle(fontSize: 16)),
               style: FilledButton.styleFrom(
