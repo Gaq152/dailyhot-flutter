@@ -28,12 +28,20 @@ class _ListPageState extends ConsumerState<ListPage> {
   int _refreshTrigger = 0; // 用于触发列表项重新动画
   bool _hasPendingUpdate = false;
   String? _lastShownErrorType; // 避免重复显示相同错误
+  final ScrollController _tabScrollController = ScrollController();
+  bool _initialScrollDone = false;
 
   @override
   void initState() {
     super.initState();
     currentType = widget.type;
     _checkPendingUpdate();
+  }
+
+  @override
+  void dispose() {
+    _tabScrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _checkPendingUpdate() async {
@@ -281,10 +289,38 @@ class _ListPageState extends ConsumerState<ListPage> {
   }
 
   Widget _buildCategoryTabs(List categories) {
+    // 首次进入或切换时滚动到当前选中项
+    final currentIndex = categories.indexWhere((c) => c.name == currentType);
+    if (currentIndex > 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_tabScrollController.hasClients) return;
+
+        // 每个 chip 大约 100 宽度，滚动到让选中项居中
+        final targetOffset = (currentIndex * 100.0 - 100).clamp(
+          0.0,
+          _tabScrollController.position.maxScrollExtent,
+        );
+
+        if (!_initialScrollDone) {
+          // 首次进入，直接跳转
+          _tabScrollController.jumpTo(targetOffset);
+          _initialScrollDone = true;
+        } else {
+          // 切换时，平滑滚动
+          _tabScrollController.animateTo(
+            targetOffset,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    }
+
     return Container(
       height: 60,
       color: Theme.of(context).appBarTheme.backgroundColor,
       child: ListView.builder(
+        controller: _tabScrollController,
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         itemCount: categories.length,
