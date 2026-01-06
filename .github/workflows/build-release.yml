@@ -67,6 +67,31 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: 🗄️ 缓存 Gradle 依赖
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: 🔧 配置 Gradle 网络
+        run: |
+          mkdir -p ~/.gradle
+          cat > ~/.gradle/gradle.properties << 'EOF'
+          # 增加网络超时和重试
+          org.gradle.daemon=true
+          org.gradle.parallel=true
+          org.gradle.caching=true
+          systemProp.http.socketTimeout=120000
+          systemProp.http.connectionTimeout=120000
+          systemProp.https.socketTimeout=120000
+          systemProp.https.connectionTimeout=120000
+          EOF
+          echo "✅ Gradle 网络配置完成"
+
       - name: 🔧 创建环境配置
         env:
           API_BASE_URL: ${{ secrets.API_BASE_URL }}

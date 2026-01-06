@@ -1,11 +1,11 @@
 allprojects {
     repositories {
-        // 使用阿里云镜像，提高国内下载速度
+        google()
+        mavenCentral()
+        // 备用镜像源（国内开发时可用）
         maven { url = uri("https://maven.aliyun.com/repository/google") }
         maven { url = uri("https://maven.aliyun.com/repository/public") }
         maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
-        google()
-        mavenCentral()
     }
 }
 
