@@ -353,41 +353,6 @@ class _ListPageState extends ConsumerState<ListPage> {
   }
 
   Widget _buildCategoryTabs(List categories) {
-    // 首次进入或切换时滚动到当前选中项
-    final currentIndex = categories.indexWhere((c) => c.name == currentType);
-    if (currentIndex >= 0) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!_tabScrollController.hasClients) return;
-
-        // 计算让选中项居中的目标偏移量
-        // 每个 chip 宽度约 100（包含 padding）
-        const double itemWidth = 100.0;
-        const double horizontalPadding = 12.0; // ListView 的水平 padding
-        final double viewportWidth = _tabScrollController.position.viewportDimension;
-
-        // 计算 item 中心位置（相对于内容起点）
-        final double itemCenter = horizontalPadding + currentIndex * itemWidth + itemWidth / 2;
-        // 让 item 中心对齐到视口中心
-        final double targetOffset = (itemCenter - viewportWidth / 2).clamp(
-          0.0,
-          _tabScrollController.position.maxScrollExtent,
-        );
-
-        if (!_initialScrollDone) {
-          // 首次进入，直接跳转
-          _tabScrollController.jumpTo(targetOffset);
-          _initialScrollDone = true;
-        } else {
-          // 切换时，平滑滚动
-          _tabScrollController.animateTo(
-            targetOffset,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        }
-      });
-    }
-
     return Container(
       height: 60,
       color: Theme.of(context).appBarTheme.backgroundColor,
@@ -399,41 +364,69 @@ class _ListPageState extends ConsumerState<ListPage> {
         itemBuilder: (context, index) {
           final category = categories[index];
           final isSelected = category.name == currentType;
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: FilterChip(
-              selected: isSelected,
-              label: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(11),
-                    child: Image.asset(
-                      category.icon,
-                      width: 20,
-                      height: 20,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
+
+          // 使用 Builder 获取当前 item 的精确 Context
+          return Builder(
+            builder: (itemContext) {
+              // 如果是选中项且是首次进入，触发滚动到中心
+              if (isSelected && !_initialScrollDone) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted) return;
+                  _initialScrollDone = true;
+                  Scrollable.ensureVisible(
+                    itemContext,
+                    alignment: 0.5, // 居中对齐
+                    duration: Duration.zero, // 首次直接跳转，无动画
+                  );
+                });
+              }
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: FilterChip(
+                  selected: isSelected,
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(11),
+                        child: Image.asset(
+                          category.icon,
                           width: 20,
                           height: 20,
-                          color: Colors.grey.shade300,
-                        );
-                      },
-                    ),
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              width: 20,
+                              height: 20,
+                              color: Colors.grey.shade300,
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(category.label),
+                    ],
                   ),
-                  const SizedBox(width: 6),
-                  Text(category.label),
-                ],
-              ),
-              onSelected: (selected) {
-                if (selected && currentType != category.name) {
-                  setState(() {
-                    currentType = category.name;
-                    currentPage = 1;
-                  });
-                }
-              },
-            ),
+                  onSelected: (selected) {
+                    if (selected && currentType != category.name) {
+                      setState(() {
+                        currentType = category.name;
+                        currentPage = 1;
+                        _errorShownForCurrentData = false;
+                      });
+
+                      // 点击后滚动到中心
+                      Scrollable.ensureVisible(
+                        itemContext,
+                        alignment: 0.5,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOut,
+                      );
+                    }
+                  },
+                ),
+              );
+            },
           );
         },
       ),
