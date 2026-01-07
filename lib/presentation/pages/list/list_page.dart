@@ -28,16 +28,17 @@ class _ListPageState extends ConsumerState<ListPage> {
   final ScrollController _tabScrollController = ScrollController();
   bool _initialScrollDone = false;
   final Map<String, GlobalKey> _tabKeys = {};
+  List<dynamic> _cachedCategories = [];
 
   @override
   void initState() {
     super.initState();
-    // 首次进入后执行初始滚动
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollToSelectedTab(animate: false);
-    });
     currentType = widget.type;
     _checkPendingUpdate();
+    // 首次进入后执行初始滚动，延迟执行确保 Tab 已构建
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToSelectedTabInitial();
+    });
   }
 
   @override
@@ -70,6 +71,36 @@ class _ListPageState extends ConsumerState<ListPage> {
       );
       _initialScrollDone = true;
     }
+  }
+
+  /// 首次进入时滚动到选中的 Tab
+  /// 因为 ListView.builder 懒加载，需要先估算位置滚动，让目标 Tab 进入可视区域
+  void _scrollToSelectedTabInitial() {
+    if (_initialScrollDone || _cachedCategories.isEmpty) return;
+
+    // 找到当前选中的 Tab 索引
+    final index = _cachedCategories.indexWhere((c) => c.name == currentType);
+    if (index < 0) return;
+
+    // 估算每个 Tab 的平均宽度（包括 padding）
+    const estimatedTabWidth = 100.0;
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    // 计算目标偏移量，使选中项居中
+    final targetOffset = (index * estimatedTabWidth) - (screenWidth / 2) + (estimatedTabWidth / 2);
+
+    // 先跳转到大概位置
+    if (_tabScrollController.hasClients) {
+      final maxScroll = _tabScrollController.position.maxScrollExtent;
+      final clampedOffset = targetOffset.clamp(0.0, maxScroll);
+      _tabScrollController.jumpTo(clampedOffset);
+    }
+
+    // 等待渲染后再用 ensureVisible 精确居中
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _scrollToSelectedTab(animate: false);
+    });
   }
 
   /// 检查是否为无意义的占位文本
@@ -261,6 +292,9 @@ class _ListPageState extends ConsumerState<ListPage> {
         .where((c) => c.show)
         .toList()
       ..sort((a, b) => a.order.compareTo(b.order));
+
+    // 缓存分类列表，供首次滚动使用
+    _cachedCategories = categories;
 
     // 获取当前榜单分类信息
     final currentCategory = categories.firstWhere(

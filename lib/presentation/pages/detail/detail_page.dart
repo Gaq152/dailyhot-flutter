@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:dio/dio.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../../data/models/hot_list_item.dart';
 
 /// 热榜详情页
@@ -142,12 +143,54 @@ class DetailPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              Text(
-                item.desc!,
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  height: 1.6,
-                  color: theme.colorScheme.onSurface,
+              // 使用 Markdown 渲染，支持格式化文本、链接、表情等
+              MarkdownBody(
+                data: item.desc!,
+                selectable: true,
+                styleSheet: MarkdownStyleSheet(
+                  p: theme.textTheme.bodyLarge?.copyWith(
+                    height: 1.6,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                  h1: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                  h2: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                  h3: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                  listBullet: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onSurface,
+                  ),
+                  blockquote: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontStyle: FontStyle.italic,
+                  ),
+                  blockquoteDecoration: BoxDecoration(
+                    border: Border(
+                      left: BorderSide(
+                        color: theme.colorScheme.primary.withAlpha(128),
+                        width: 4,
+                      ),
+                    ),
+                  ),
+                  code: TextStyle(
+                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                    fontFamily: 'monospace',
+                    fontSize: 14,
+                  ),
+                  codeblockDecoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
+                onTapLink: (text, href, title) {
+                  if (href != null) {
+                    launchUrl(Uri.parse(href), mode: LaunchMode.externalApplication);
+                  }
+                },
               ),
             ] else ...[
               Container(
