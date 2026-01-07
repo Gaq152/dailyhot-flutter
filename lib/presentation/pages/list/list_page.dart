@@ -1,15 +1,12 @@
-import 'dart:io';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:android_intent_plus/android_intent.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/hot_list_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../data/models/data_result.dart';
+import '../../../data/models/hot_list_item.dart';
 
 class ListPage extends ConsumerStatefulWidget {
   final String type;
@@ -30,10 +27,15 @@ class _ListPageState extends ConsumerState<ListPage> {
   bool _errorShownForCurrentData = false; // 当前数据的错误是否已显示过
   final ScrollController _tabScrollController = ScrollController();
   bool _initialScrollDone = false;
+  final Map<String, GlobalKey> _tabKeys = {};
 
   @override
   void initState() {
     super.initState();
+    // 首次进入后执行初始滚动
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToSelectedTab(animate: false);
+    });
     currentType = widget.type;
     _checkPendingUpdate();
   }
@@ -54,6 +56,48 @@ class _ListPageState extends ConsumerState<ListPage> {
         _hasPendingUpdate = hasPending;
       });
     }
+  }
+
+  /// 滚动到选中的 Tab 使其居中
+  void _scrollToSelectedTab({bool animate = true}) {
+    final key = _tabKeys[currentType];
+    if (key?.currentContext != null) {
+      Scrollable.ensureVisible(
+        key!.currentContext!,
+        alignment: 0.5,
+        duration: animate ? const Duration(milliseconds: 300) : Duration.zero,
+        curve: Curves.easeOut,
+      );
+      _initialScrollDone = true;
+    }
+  }
+
+  /// 检查是否为无意义的占位文本
+  bool _isPlaceholderDesc(String desc) {
+    const placeholders = [
+      '该视频暂无简介',
+      '暂无简介',
+      '-',
+      '无',
+      'null',
+      '暂无描述',
+      '暂无内容',
+    ];
+    final trimmed = desc.trim();
+    return placeholders.contains(trimmed) || trimmed.length < 2;
+  }
+
+  /// 获取当前分类信息
+  dynamic _getCurrentCategory() {
+    final settings = ref.read(settingsProvider);
+    final categories = settings.categories
+        .where((c) => c.show)
+        .toList()
+      ..sort((a, b) => a.order.compareTo(b.order));
+    return categories.firstWhere(
+      (c) => c.name == currentType,
+      orElse: () => categories.first,
+    );
   }
 
   /// 显示错误提示 SnackBar（每次数据加载只显示一次）
@@ -365,68 +409,60 @@ class _ListPageState extends ConsumerState<ListPage> {
           final category = categories[index];
           final isSelected = category.name == currentType;
 
-          // 使用 Builder 获取当前 item 的精确 Context
-          return Builder(
-            builder: (itemContext) {
-              // 如果是选中项且是首次进入，触发滚动到中心
-              if (isSelected && !_initialScrollDone) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (!mounted) return;
-                  _initialScrollDone = true;
-                  Scrollable.ensureVisible(
-                    itemContext,
-                    alignment: 0.5, // 居中对齐
-                    duration: Duration.zero, // 首次直接跳转，无动画
-                  );
-                });
-              }
+          // 为每个 Tab 创建或获取 GlobalKey
+          _tabKeys.putIfAbsent(category.name, () => GlobalKey());
+          final tabKey = _tabKeys[category.name]!;
 
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: FilterChip(
-                  selected: isSelected,
-                  label: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(11),
-                        child: Image.asset(
-                          category.icon,
+          // 首次渲染完成后，如果还没滚动过，尝试滚动到选中项
+          if (isSelected && !_initialScrollDone) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted || _initialScrollDone) return;
+              _scrollToSelectedTab(animate: false);
+            });
+          }
+
+          return Padding(
+            key: tabKey,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: FilterChip(
+              selected: isSelected,
+              label: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(11),
+                    child: Image.asset(
+                      category.icon,
+                      width: 20,
+                      height: 20,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
                           width: 20,
                           height: 20,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              width: 20,
-                              height: 20,
-                              color: Colors.grey.shade300,
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(category.label),
-                    ],
+                          color: Colors.grey.shade300,
+                        );
+                      },
+                    ),
                   ),
-                  onSelected: (selected) {
-                    if (selected && currentType != category.name) {
-                      setState(() {
-                        currentType = category.name;
-                        currentPage = 1;
-                        _errorShownForCurrentData = false;
-                      });
+                  const SizedBox(width: 6),
+                  Text(category.label),
+                ],
+              ),
+              onSelected: (selected) {
+                if (selected && currentType != category.name) {
+                  setState(() {
+                    currentType = category.name;
+                    currentPage = 1;
+                    _errorShownForCurrentData = false;
+                  });
 
-                      // 点击后滚动到中心
-                      Scrollable.ensureVisible(
-                        itemContext,
-                        alignment: 0.5,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeOut,
-                      );
-                    }
-                  },
-                ),
-              );
-            },
+                  // 点击后滚动到中心
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _scrollToSelectedTab(animate: true);
+                  });
+                }
+              },
+            ),
           );
         },
       ),
@@ -456,7 +492,7 @@ class _ListPageState extends ConsumerState<ListPage> {
                 index: index,
                 isRefreshing: _isRefreshing,
                 refreshTrigger: _refreshTrigger,
-                child: _buildListItem(item, globalIndex, settings),
+                child: _buildListItem(item, globalIndex, settings, _getCurrentCategory()),
               );
             },
           ),
@@ -468,9 +504,9 @@ class _ListPageState extends ConsumerState<ListPage> {
     );
   }
 
-  Widget _buildListItem(dynamic item, int index, dynamic settings) {
+  Widget _buildListItem(HotListItem item, int index, dynamic settings, dynamic category) {
     return InkWell(
-      onTap: () => _launchUrl(item.url, item: item),
+      onTap: () => _openDetail(item, category),
       borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
@@ -493,10 +529,10 @@ class _ListPageState extends ConsumerState<ListPage> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  if (item.desc != null) ...[
+                  if (item.desc != null && item.desc!.isNotEmpty && !_isPlaceholderDesc(item.desc!)) ...[
                     const SizedBox(height: 6),
                     Text(
-                      item.desc,
+                      item.desc!,
                       maxLines: 5,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -772,97 +808,13 @@ class _ListPageState extends ConsumerState<ListPage> {
     );
   }
 
-  Future<void> _launchUrl(String url, {dynamic item}) async {
-    final uri = Uri.parse(url);
-    String? videoId; // 用于保存获取到的视频ID
-
-    // 检测抖音热榜链接且在Android平台
-    if (Platform.isAndroid &&
-        uri.host.contains('douyin.com') &&
-        uri.path.startsWith('/hot/') &&
-        item != null &&
-        item.title != null) {
-      try {
-        debugPrint('检测到抖音热榜，尝试获取视频ID: ${item.title}');
-
-        // 1. 获取Cookie
-        final cookieUrl =
-            'https://www.douyin.com/passport/general/login_guiding_strategy/?aid=6383';
-        final cookieResponse = await Dio().get(cookieUrl);
-
-        String? csrfToken;
-        final setCookie = cookieResponse.headers['set-cookie'];
-        if (setCookie != null && setCookie.isNotEmpty) {
-          final pattern = RegExp(r'passport_csrf_token=(.*?);');
-          final match = pattern.firstMatch(setCookie.first);
-          if (match != null) {
-            csrfToken = match.group(1);
-          }
-        }
-
-        if (csrfToken == null) {
-          debugPrint('无法获取Cookie，降级到浏览器');
-          throw Exception('Cookie获取失败');
-        }
-
-        debugPrint('Cookie获取成功');
-
-        // 2. 调用视频列表API
-        final hotword = Uri.encodeComponent(item.title);
-        final videoListUrl =
-            'https://aweme-hl.snssdk.com/aweme/v1/hot/search/video/list/'
-            '?hotword=$hotword&device_platform=webapp&aid=6383';
-
-        final videoResponse = await Dio().get(
-          videoListUrl,
-          options: Options(
-            headers: {
-              'Cookie': 'passport_csrf_token=$csrfToken',
-              'User-Agent':
-                  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            },
-          ),
-        );
-
-        // 3. 提取视频ID
-        final awemeList = videoResponse.data?['aweme_list'];
-        if (awemeList != null && awemeList.isNotEmpty) {
-          videoId = awemeList[0]['aweme_id'].toString();
-          debugPrint('获取到视频ID: $videoId');
-
-          // 4. 尝试用抖音scheme打开
-          try {
-            final intent = AndroidIntent(
-              action: 'android.intent.action.VIEW',
-              data: 'snssdk1128://aweme/detail/$videoId',
-            );
-
-            await intent.launch();
-            debugPrint('成功打开抖音APP');
-            return;
-          } catch (e) {
-            debugPrint('启动抖音APP失败: $e，将使用视频ID降级到浏览器');
-            // videoId已保存，继续执行降级逻辑
-          }
-        } else {
-          debugPrint('未找到相关视频，降级到浏览器');
-        }
-      } catch (e) {
-        debugPrint('抖音链接处理失败: $e，降级到浏览器');
-      }
-    }
-
-    // 降级：浏览器打开
-    // 如果是抖音链接且获取到了视频ID，使用视频页面链接而非热榜链接
-    Uri finalUri = uri;
-    if (videoId != null && uri.host.contains('douyin.com')) {
-      finalUri = Uri.parse('https://www.douyin.com/video/$videoId');
-      debugPrint('使用视频链接降级: $finalUri');
-    }
-
-    if (await canLaunchUrl(finalUri)) {
-      await launchUrl(finalUri, mode: LaunchMode.externalApplication);
-    }
+  /// 打开详情页
+  void _openDetail(HotListItem item, dynamic category) {
+    context.push('/detail', extra: {
+      'item': item,
+      'categoryIcon': category.icon,
+      'categoryLabel': category.label,
+    });
   }
 }
 
