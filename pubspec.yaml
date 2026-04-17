@@ -30,6 +30,7 @@ dependencies:
   flutter_markdown: ^0.7.6
 
   # 工具类
+  connectivity_plus: ^6.0.0
   url_launcher: ^6.2.5
   webview_flutter: ^4.4.2
   android_intent_plus: ^5.1.0

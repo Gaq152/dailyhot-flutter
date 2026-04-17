@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../providers/hot_list_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/connectivity_provider.dart';
 import '../../../data/models/data_result.dart';
 import '../../../data/models/hot_list_item.dart';
 
@@ -330,27 +331,50 @@ class _ListPageState extends ConsumerState<ListPage> {
           child: _buildCategoryTabs(categories),
         ),
       ),
-      body: hotListAsync.when(
-        data: (result) {
-          // 处理 DataResult
-          if (result.isFailed) {
-            // 完全失败，显示错误页面
-            return _buildError(result.errorType, result.failureMessage);
-          }
+      body: Column(
+        children: [
+          if (ref.watch(isOfflineProvider))
+            Container(
+              width: double.infinity,
+              color: Colors.orange.shade700,
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.wifi_off, size: 16, color: Colors.white),
+                  SizedBox(width: 8),
+                  Text(
+                    '当前无网络连接，显示缓存数据',
+                    style: TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          Expanded(
+            child: hotListAsync.when(
+              data: (result) {
+                // 处理 DataResult
+                if (result.isFailed) {
+                  // 完全失败，显示错误页面
+                  return _buildError(result.errorType, result.failureMessage);
+                }
 
-          // 有数据（可能是网络数据或缓存数据）
-          // 如果使用了过期缓存，显示提示
-          if (result.isStaleData && result.hasError) {
-            _showErrorSnackBar(result);
-          }
+                // 有数据（可能是网络数据或缓存数据）
+                // 如果使用了过期缓存，显示提示
+                if (result.isStaleData && result.hasError) {
+                  _showErrorSnackBar(result);
+                }
 
-          return _buildContent(result.data!);
-        },
-        loading: () => _buildLoadingSkeleton(),
-        error: (error, stack) => _buildError(
-          DataErrorType.unknownError,
-          '加载失败，请稍后重试',
-        ),
+                return _buildContent(result.data!);
+              },
+              loading: () => _buildLoadingSkeleton(),
+              error: (error, stack) => _buildError(
+                DataErrorType.unknownError,
+                '加载失败，请稍后重试',
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

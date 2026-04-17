@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../providers/hot_list_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/connectivity_provider.dart';
 import '../../../data/services/update_service.dart';
 import 'widgets/hot_card.dart';
 
@@ -366,36 +367,56 @@ class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver
           ),
         ],
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          // 响应式列数
-          int columns;
-          double aspectRatio;
-          double spacing;
+      body: Column(
+        children: [
+          if (ref.watch(isOfflineProvider))
+            Container(
+              width: double.infinity,
+              color: Colors.orange.shade700,
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.wifi_off, size: 16, color: Colors.white),
+                  SizedBox(width: 8),
+                  Text(
+                    '当前无网络连接，显示缓存数据',
+                    style: TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // 响应式列数
+                int columns;
+                double aspectRatio;
+                double spacing;
 
-          if (constraints.maxWidth >= 1500) {
-            columns = 5;
-            aspectRatio = 0.9;
-            spacing = 24;
-          } else if (constraints.maxWidth >= 1100) {
-            columns = 4;
-            aspectRatio = 0.9;
-            spacing = 24;
-          } else if (constraints.maxWidth >= 800) {
-            columns = 3;
-            aspectRatio = 0.9;
-            spacing = 24;
-          } else {
-            // 移动端默认2列，紧凑布局
-            columns = 2;
-            aspectRatio = 0.75;  // 卡片稍高
-            spacing = 12;
-          }
+                if (constraints.maxWidth >= 1500) {
+                  columns = 5;
+                  aspectRatio = 0.9;
+                  spacing = 24;
+                } else if (constraints.maxWidth >= 1100) {
+                  columns = 4;
+                  aspectRatio = 0.9;
+                  spacing = 24;
+                } else if (constraints.maxWidth >= 800) {
+                  columns = 3;
+                  aspectRatio = 0.9;
+                  spacing = 24;
+                } else {
+                  // 移动端默认2列，紧凑布局
+                  columns = 2;
+                  aspectRatio = 0.75;
+                  spacing = 12;
+                }
 
-          return AnimatedOpacity(
-            opacity: _isRefreshing ? 0.3 : 1.0,
-            duration: const Duration(milliseconds: 200),
-            child: GridView.builder(
+                return AnimatedOpacity(
+                  opacity: _isRefreshing ? 0.3 : 1.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: GridView.builder(
               padding: EdgeInsets.all(spacing),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: columns,
@@ -419,6 +440,9 @@ class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver
             ),
           );
         },
+      ),
+          ),
+        ],
       ),
     );
   }
