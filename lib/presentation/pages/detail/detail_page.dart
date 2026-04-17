@@ -5,6 +5,7 @@ import 'package:android_intent_plus/android_intent.dart';
 import 'package:dio/dio.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../data/models/hot_list_item.dart';
 
 /// 热榜详情页
@@ -35,6 +36,11 @@ class DetailPage extends StatelessWidget {
         title: Text(categoryLabel ?? '详情'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.share_outlined),
+            onPressed: () => _share(context),
+            tooltip: '分享',
+          ),
+          IconButton(
             icon: const Icon(Icons.open_in_browser),
             onPressed: () => _openInBrowser(context),
             tooltip: '在浏览器中打开',
@@ -48,27 +54,31 @@ class DetailPage extends StatelessWidget {
           children: [
             // 封面图
             if (item.cover != null && item.cover!.isNotEmpty)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: CachedNetworkImage(
-                  imageUrl: item.cover!,
-                  width: double.infinity,
-                  height: 200,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
+              Semantics(
+                image: true,
+                label: '${item.title} 封面图',
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: CachedNetworkImage(
+                    imageUrl: item.cover!,
+                    width: double.infinity,
                     height: 200,
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    child: const Center(
-                      child: CircularProgressIndicator(),
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      height: 200,
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      child: const Center(
+                        child: CircularProgressIndicator(),
+                      ),
                     ),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    height: 200,
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    child: Icon(
-                      Icons.image_not_supported,
-                      size: 48,
-                      color: theme.colorScheme.onSurfaceVariant,
+                    errorWidget: (context, url, error) => Container(
+                      height: 200,
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      child: Icon(
+                        Icons.image_not_supported,
+                        size: 48,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 ),
@@ -488,6 +498,19 @@ class DetailPage extends StatelessWidget {
     ];
     final trimmed = desc.trim();
     return placeholders.contains(trimmed) || trimmed.length < 2;
+  }
+
+  /// 分享标题和链接
+  Future<void> _share(BuildContext context) async {
+    final content = '${item.title}\n${item.url}';
+    final box = context.findRenderObject() as RenderBox?;
+    await Share.share(
+      content,
+      subject: item.title,
+      sharePositionOrigin: box != null
+          ? box.localToGlobal(Offset.zero) & box.size
+          : null,
+    );
   }
 
   /// 在浏览器中打开

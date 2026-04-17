@@ -324,13 +324,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     return Card(
                       key: ValueKey(category.name),
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      child: ListTile(
+                      child: MergeSemantics(
+                        child: ListTile(
                         leading: ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: Image.asset(
                             category.icon,
                             width: 40,
                             height: 40,
+                            excludeFromSemantics: true,
                             errorBuilder: (context, error, stackTrace) {
                               return Container(
                                 width: 40,
@@ -357,6 +359,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                               ),
                             );
                           },
+                        ),
                         ),
                       ),
                     );

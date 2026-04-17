@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 import '../../presentation/pages/home/home_page.dart';
 import '../../presentation/pages/list/list_page.dart';
 import '../../presentation/pages/detail/detail_page.dart';
+import '../../presentation/pages/search/search_page.dart';
 import '../../presentation/pages/settings/settings_page.dart';
 import '../../presentation/pages/webview/webview_page.dart';
 import '../../data/models/hot_list_item.dart';
@@ -33,6 +34,10 @@ final appRouter = GoRouter(
           categoryLabel: categoryLabel,
         );
       },
+    ),
+    GoRoute(
+      path: '/search',
+      builder: (context, state) => const SearchPage(),
     ),
     GoRoute(
       path: '/settings',

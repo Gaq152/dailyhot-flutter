@@ -146,6 +146,7 @@ class _HotCardState extends ConsumerState<HotCard> {
               widget.category.icon,
               width: iconSize,
               height: iconSize,
+              excludeFromSemantics: true,
               cacheWidth: (iconSize * MediaQuery.of(context).devicePixelRatio).toInt(),
               cacheHeight: (iconSize * MediaQuery.of(context).devicePixelRatio).toInt(),
               errorBuilder: (context, error, stackTrace) {

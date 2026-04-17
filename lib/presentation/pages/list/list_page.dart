@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../providers/hot_list_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -334,20 +335,29 @@ class _ListPageState extends ConsumerState<ListPage> {
       body: Column(
         children: [
           if (ref.watch(isOfflineProvider))
-            Container(
-              width: double.infinity,
-              color: Colors.orange.shade700,
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.wifi_off, size: 16, color: Colors.white),
-                  SizedBox(width: 8),
-                  Text(
-                    '当前无网络连接，显示缓存数据',
-                    style: TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                ],
+            Semantics(
+              liveRegion: true,
+              label: '当前无网络连接，显示缓存数据',
+              container: true,
+              child: Container(
+                width: double.infinity,
+                color: Colors.orange.shade700,
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ExcludeSemantics(
+                      child: Icon(Icons.wifi_off, size: 16, color: Colors.white),
+                    ),
+                    SizedBox(width: 8),
+                    ExcludeSemantics(
+                      child: Text(
+                        '当前无网络连接，显示缓存数据',
+                        style: TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           Expanded(
@@ -560,66 +570,78 @@ class _ListPageState extends ConsumerState<ListPage> {
   }
 
   Widget _buildListItem(HotListItem item, int index, dynamic settings, dynamic category) {
-    return InkWell(
-      onTap: () => _openDetail(item, category),
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 序号徽章
-            _buildRankBadge(index),
-            const SizedBox(width: 12),
+    final hotSuffix = item.hot != null ? '，热度${item.hotText}' : '';
+    final descSuffix = (item.desc != null &&
+            item.desc!.isNotEmpty &&
+            !_isPlaceholderDesc(item.desc!))
+        ? '，${item.desc}'
+        : '';
+    return Semantics(
+      button: true,
+      label: '第${index + 1}条，${item.title}$descSuffix$hotSuffix，点击查看详情',
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: () => _openDetail(item, category),
+        onLongPress: () => _shareItem(item),
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 序号徽章
+              _buildRankBadge(index),
+              const SizedBox(width: 12),
 
-            // 标题和描述
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.title,
-                    style: TextStyle(
-                      fontSize: settings.listFontSize,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  if (item.desc != null && item.desc!.isNotEmpty && !_isPlaceholderDesc(item.desc!)) ...[
-                    const SizedBox(height: 6),
+              // 标题和描述
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      item.desc!,
-                      maxLines: 5,
-                      overflow: TextOverflow.ellipsis,
+                      item.title,
                       style: TextStyle(
-                        fontSize: settings.listFontSize - 2,
-                        color: Colors.grey.shade600,
+                        fontSize: settings.listFontSize,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                  ],
-                  if (item.hot != null) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.local_fire_department,
-                          size: settings.listFontSize - 2,
+                    if (item.desc != null && item.desc!.isNotEmpty && !_isPlaceholderDesc(item.desc!)) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        item.desc!,
+                        maxLines: 5,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: settings.listFontSize - 2,
                           color: Colors.grey.shade600,
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          item.hotText,
-                          style: TextStyle(
-                            fontSize: settings.listFontSize - 4,
+                      ),
+                    ],
+                    if (item.hot != null) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.local_fire_department,
+                            size: settings.listFontSize - 2,
                             color: Colors.grey.shade600,
                           ),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(width: 4),
+                          Text(
+                            item.hotText,
+                            style: TextStyle(
+                              fontSize: settings.listFontSize - 4,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -806,6 +828,18 @@ class _ListPageState extends ConsumerState<ListPage> {
       'categoryIcon': category.icon,
       'categoryLabel': category.label,
     });
+  }
+
+  /// 长按分享列表项
+  Future<void> _shareItem(HotListItem item) async {
+    final box = context.findRenderObject() as RenderBox?;
+    await Share.share(
+      '${item.title}\n${item.url}',
+      subject: item.title,
+      sharePositionOrigin: box != null
+          ? box.localToGlobal(Offset.zero) & box.size
+          : null,
+    );
   }
 }
 

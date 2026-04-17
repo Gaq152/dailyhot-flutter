@@ -347,6 +347,11 @@ class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver
         title: _buildAppBarTitle(),
         actions: [
           IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () => context.push('/search'),
+            tooltip: '搜索',
+          ),
+          IconButton(
             icon: _isRefreshing
                 ? const SizedBox(
                     width: 20,
@@ -370,20 +375,29 @@ class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver
       body: Column(
         children: [
           if (ref.watch(isOfflineProvider))
-            Container(
-              width: double.infinity,
-              color: Colors.orange.shade700,
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.wifi_off, size: 16, color: Colors.white),
-                  SizedBox(width: 8),
-                  Text(
-                    '当前无网络连接，显示缓存数据',
-                    style: TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                ],
+            Semantics(
+              liveRegion: true,
+              label: '当前无网络连接，显示缓存数据',
+              container: true,
+              child: Container(
+                width: double.infinity,
+                color: Colors.orange.shade700,
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ExcludeSemantics(
+                      child: Icon(Icons.wifi_off, size: 16, color: Colors.white),
+                    ),
+                    SizedBox(width: 8),
+                    ExcludeSemantics(
+                      child: Text(
+                        '当前无网络连接，显示缓存数据',
+                        style: TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           Expanded(
@@ -430,10 +444,14 @@ class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver
                 return _AnimatedCard(
                   index: index,
                   isRefreshing: _isRefreshing,
-                  child: HotCard(
-                    category: category,
-                    index: index,
-                    onTap: () => context.push('/list/${category.name}'),
+                  child: Semantics(
+                    button: true,
+                    label: '${category.label}榜单，点击查看完整列表',
+                    child: HotCard(
+                      category: category,
+                      index: index,
+                      onTap: () => context.push('/list/${category.name}'),
+                    ),
                   ),
                 );
               },
