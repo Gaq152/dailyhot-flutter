@@ -73,8 +73,8 @@ class HotListRepository {
             return DataResult.fromFreshCache(filteredResponse);
           }
 
-          // 缓存已过期，尝试从网络获取新数据
-          // 如果网络失败，会在 catch 中返回过期缓存
+          // 缓存已过期，立即返回过期数据供展示，由 UI 层触发后台刷新
+          return DataResult.fromExpiredCache(filteredResponse);
         } catch (e) {
           // 缓存解析失败，继续请求网络
         }

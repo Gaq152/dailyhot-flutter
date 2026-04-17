@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../../core/config/app_config.dart';
 
@@ -39,7 +40,7 @@ class LocalStorage {
       }
       return null;
     } catch (e) {
-      // 缓存数据格式错误，异步删除缓存
+      debugPrint('缓存解析失败 [$type]: $e');
       Future.microtask(() => _cacheBox.delete('hotlist_$type'));
       return null;
     }

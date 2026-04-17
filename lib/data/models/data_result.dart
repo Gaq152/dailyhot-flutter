@@ -56,6 +56,10 @@ class DataResult<T> {
   /// 是否使用了过期缓存（需要提示用户）
   bool get isStaleData => source == DataSource.staleCache;
 
+  /// 是否需要后台刷新（过期缓存但无网络错误，即冷启动场景）
+  bool get needsBackgroundRefresh =>
+      source == DataSource.staleCache && errorType == DataErrorType.none;
+
   /// 是否有错误发生（但可能仍有缓存数据可用）
   bool get hasError => errorType != DataErrorType.none;
 
@@ -96,6 +100,14 @@ class DataResult<T> {
       source: DataSource.staleCache,
       errorType: errorType,
       errorMessage: errorMessage,
+    );
+  }
+
+  /// 创建过期缓存结果（冷启动时先展示，后台刷新）
+  factory DataResult.fromExpiredCache(T data) {
+    return DataResult(
+      data: data,
+      source: DataSource.staleCache,
     );
   }
 

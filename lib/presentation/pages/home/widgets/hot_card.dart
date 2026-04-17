@@ -21,6 +21,32 @@ class HotCard extends ConsumerStatefulWidget {
 }
 
 class _HotCardState extends ConsumerState<HotCard> {
+  bool _isBackgroundRefreshing = false;
+
+  void _triggerBackgroundRefresh() {
+    if (_isBackgroundRefreshing) return;
+    setState(() => _isBackgroundRefreshing = true);
+
+    ref.read(
+      hotListProvider(
+        HotListParams(type: widget.category.name, forceRefresh: true),
+      ).future,
+    ).then((_) {
+      if (mounted) {
+        setState(() => _isBackgroundRefreshing = false);
+        ref.invalidate(
+          hotListProvider(
+            HotListParams(type: widget.category.name, forceRefresh: false),
+          ),
+        );
+      }
+    }).catchError((_) {
+      if (mounted) {
+        setState(() => _isBackgroundRefreshing = false);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final hotListAsync = ref.watch(
@@ -48,6 +74,13 @@ class _HotCardState extends ConsumerState<HotCard> {
               );
             }
 
+            // 过期缓存（冷启动）：立即展示并触发后台刷新
+            if (result.needsBackgroundRefresh) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _triggerBackgroundRefresh();
+              });
+            }
+
             // 有数据（可能是网络或缓存）
             final data = result.data!;
             return Column(
@@ -58,6 +91,7 @@ class _HotCardState extends ConsumerState<HotCard> {
                   context,
                   data.updateTime,
                   isStale: result.isStaleData,
+                  isRefreshing: _isBackgroundRefreshing,
                   errorType: result.hasError ? result.errorType : null,
                 ),
               ],
@@ -386,6 +420,7 @@ class _HotCardState extends ConsumerState<HotCard> {
     BuildContext context,
     String? updateTime, {
     bool isStale = false,
+    bool isRefreshing = false,
     DataErrorType? errorType,
   }) {
     final formattedTime = _formatUpdateTime(updateTime);
@@ -395,8 +430,20 @@ class _HotCardState extends ConsumerState<HotCard> {
     String displayText = formattedTime;
     Color? textColor;
     IconData? statusIcon;
+    Widget? statusWidget;
 
-    if (errorType != null && errorType != DataErrorType.none) {
+    if (isRefreshing) {
+      displayText = '更新中...';
+      textColor = colorScheme.primary;
+      statusWidget = SizedBox(
+        width: 12,
+        height: 12,
+        child: CircularProgressIndicator(
+          strokeWidth: 1.5,
+          color: colorScheme.primary,
+        ),
+      );
+    } else if (errorType != null && errorType != DataErrorType.none) {
       // 有错误发生
       switch (errorType) {
         case DataErrorType.networkError:
@@ -436,7 +483,10 @@ class _HotCardState extends ConsumerState<HotCard> {
           Expanded(
             child: Row(
               children: [
-                if (statusIcon != null) ...[
+                if (statusWidget != null) ...[
+                  statusWidget,
+                  const SizedBox(width: 4),
+                ] else if (statusIcon != null) ...[
                   Icon(
                     statusIcon,
                     size: 12,
