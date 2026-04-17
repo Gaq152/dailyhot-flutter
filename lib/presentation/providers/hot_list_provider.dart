@@ -18,11 +18,10 @@ class HotListParams {
       identical(this, other) ||
       other is HotListParams &&
           runtimeType == other.runtimeType &&
-          type == other.type &&
-          forceRefresh == other.forceRefresh;
+          type == other.type;
 
   @override
-  int get hashCode => type.hashCode ^ forceRefresh.hashCode;
+  int get hashCode => type.hashCode;
 }
 
 /// 热榜数据 Provider（使用 family 支持不同类型）

@@ -55,6 +55,11 @@ class _HotCardState extends ConsumerState<HotCard> {
       ),
     );
 
+    final brandColorBar = Container(
+      height: 3,
+      color: Color(widget.category.color),
+    );
+
     return Card(
       elevation: 2,
       clipBehavior: Clip.antiAlias,
@@ -67,6 +72,7 @@ class _HotCardState extends ConsumerState<HotCard> {
               // 完全失败，显示错误
               return Column(
                 children: [
+                  brandColorBar,
                   _buildHeader(context, null),
                   Expanded(child: _buildError(ref, result.errorType)),
                   _buildFooter(context, null, errorType: result.errorType),
@@ -85,6 +91,7 @@ class _HotCardState extends ConsumerState<HotCard> {
             final data = result.data!;
             return Column(
               children: [
+                brandColorBar,
                 _buildHeader(context, data.subtitle),
                 Expanded(child: _buildList(context, data.data.take(5).toList())),
                 _buildFooter(
@@ -99,6 +106,7 @@ class _HotCardState extends ConsumerState<HotCard> {
           },
           loading: () => Column(
             children: [
+              brandColorBar,
               _buildHeader(context, null),
               Expanded(child: _buildLoadingSkeleton()),
               _buildFooter(context, null),
@@ -106,6 +114,7 @@ class _HotCardState extends ConsumerState<HotCard> {
           ),
           error: (err, stack) => Column(
             children: [
+              brandColorBar,
               _buildHeader(context, null),
               Expanded(child: _buildError(ref, DataErrorType.unknownError)),
               _buildFooter(context, null, errorType: DataErrorType.unknownError),

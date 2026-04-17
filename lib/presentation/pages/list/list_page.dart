@@ -898,7 +898,7 @@ class _AnimatedListItemState extends State<_AnimatedListItem> {
       _lastRefreshTrigger = widget.refreshTrigger;
       // 刷新完成，逐个显示，每个间隔50ms
       setState(() => _isVisible = false);
-      final delay = widget.index * 50 + 100;
+      final delay = (widget.index ~/ 4) * 40 + 100;
       Future.delayed(Duration(milliseconds: delay), () {
         if (mounted) {
           setState(() => _isVisible = true);
