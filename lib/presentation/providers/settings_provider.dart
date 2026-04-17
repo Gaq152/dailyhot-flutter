@@ -11,6 +11,10 @@ class SettingsState {
   final double listFontSize;
   final List<HotListCategory> categories;
   final bool autoCheckUpdate;
+  final bool hasPendingUpdate;
+  final String? pendingUpdateVersion;
+  final String? pendingUpdateUrl;
+  final String? pendingUpdateChangelog;
 
   SettingsState({
     required this.themeMode,
@@ -18,6 +22,10 @@ class SettingsState {
     required this.listFontSize,
     required this.categories,
     required this.autoCheckUpdate,
+    this.hasPendingUpdate = false,
+    this.pendingUpdateVersion,
+    this.pendingUpdateUrl,
+    this.pendingUpdateChangelog,
   });
 
   SettingsState copyWith({
@@ -26,6 +34,10 @@ class SettingsState {
     double? listFontSize,
     List<HotListCategory>? categories,
     bool? autoCheckUpdate,
+    bool? hasPendingUpdate,
+    String? pendingUpdateVersion,
+    String? pendingUpdateUrl,
+    String? pendingUpdateChangelog,
   }) {
     return SettingsState(
       themeMode: themeMode ?? this.themeMode,
@@ -33,6 +45,10 @@ class SettingsState {
       listFontSize: listFontSize ?? this.listFontSize,
       categories: categories ?? this.categories,
       autoCheckUpdate: autoCheckUpdate ?? this.autoCheckUpdate,
+      hasPendingUpdate: hasPendingUpdate ?? this.hasPendingUpdate,
+      pendingUpdateVersion: pendingUpdateVersion ?? this.pendingUpdateVersion,
+      pendingUpdateUrl: pendingUpdateUrl ?? this.pendingUpdateUrl,
+      pendingUpdateChangelog: pendingUpdateChangelog ?? this.pendingUpdateChangelog,
     );
   }
 }
@@ -58,6 +74,11 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     final themeAuto = _prefs.getBool('themeAuto') ?? true;
     final listFontSize = _prefs.getDouble('listFontSize') ?? 16.0;
     final autoCheckUpdate = _prefs.getBool('auto_check_update') ?? true;
+
+    // 加载待更新信息
+    final pendingVersion = _prefs.getString('pending_update_version');
+    final pendingUrl = _prefs.getString('pending_update_url');
+    final pendingChangelog = _prefs.getString('pending_update_changelog');
 
     // 加载分类列表
     final categoriesJson = _prefs.getStringList('categories');
@@ -101,6 +122,10 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       listFontSize: listFontSize,
       categories: categories,
       autoCheckUpdate: autoCheckUpdate,
+      hasPendingUpdate: pendingVersion != null,
+      pendingUpdateVersion: pendingVersion,
+      pendingUpdateUrl: pendingUrl,
+      pendingUpdateChangelog: pendingChangelog,
     );
   }
 
@@ -161,6 +186,32 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   Future<void> setAutoCheckUpdate(bool value) async {
     await _prefs.setBool('auto_check_update', value);
     state = state.copyWith(autoCheckUpdate: value);
+  }
+
+  /// 设置待更新信息
+  Future<void> setPendingUpdate(String version, String url, String changelog) async {
+    await _prefs.setString('pending_update_version', version);
+    await _prefs.setString('pending_update_url', url);
+    await _prefs.setString('pending_update_changelog', changelog);
+    state = state.copyWith(
+      hasPendingUpdate: true,
+      pendingUpdateVersion: version,
+      pendingUpdateUrl: url,
+      pendingUpdateChangelog: changelog,
+    );
+  }
+
+  /// 清除待更新信息
+  Future<void> clearPendingUpdate() async {
+    await _prefs.remove('pending_update_version');
+    await _prefs.remove('pending_update_url');
+    await _prefs.remove('pending_update_changelog');
+    state = state.copyWith(
+      hasPendingUpdate: false,
+      pendingUpdateVersion: null,
+      pendingUpdateUrl: null,
+      pendingUpdateChangelog: null,
+    );
   }
 
   /// 重置所有设置

@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../providers/hot_list_provider.dart';
 import '../../providers/settings_provider.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../data/models/data_result.dart';
 import '../../../data/models/hot_list_item.dart';
 
@@ -23,7 +21,6 @@ class _ListPageState extends ConsumerState<ListPage> {
   int _displayedCount = 20;
   bool _isRefreshing = false;
   int _refreshTrigger = 0;
-  bool _hasPendingUpdate = false;
   bool _errorShownForCurrentData = false;
   final ScrollController _tabScrollController = ScrollController();
   final ScrollController _contentScrollController = ScrollController();
@@ -35,7 +32,6 @@ class _ListPageState extends ConsumerState<ListPage> {
   void initState() {
     super.initState();
     currentType = widget.type;
-    _checkPendingUpdate();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToSelectedTabInitial();
     });
@@ -55,16 +51,6 @@ class _ListPageState extends ConsumerState<ListPage> {
         _contentScrollController.position.maxScrollExtent - 200) {
       setState(() {
         _displayedCount += 20;
-      });
-    }
-  }
-
-  Future<void> _checkPendingUpdate() async {
-    final prefs = await SharedPreferences.getInstance();
-    final hasPending = prefs.getString(AppConstants.keyPendingUpdateVersion) != null;
-    if (mounted) {
-      setState(() {
-        _hasPendingUpdate = hasPending;
       });
     }
   }
@@ -332,7 +318,7 @@ class _ListPageState extends ConsumerState<ListPage> {
           ),
           IconButton(
             icon: Badge(
-              isLabelVisible: _hasPendingUpdate,
+              isLabelVisible: settings.hasPendingUpdate,
               child: const Icon(Icons.settings),
             ),
             onPressed: () => context.push('/settings'),

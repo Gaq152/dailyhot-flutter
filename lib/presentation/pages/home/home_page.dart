@@ -2,12 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../providers/hot_list_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../../data/services/update_service.dart';
-import '../../../core/constants/app_constants.dart';
 import 'widgets/hot_card.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -20,16 +18,12 @@ class HomePage extends ConsumerStatefulWidget {
 class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver {
   bool _isRefreshing = false;
   Timer? _updateCheckTimer;
-  bool _hasPendingUpdate = false;
   DateTime _lastActiveTime = DateTime.now();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-
-    // 检查是否有待更新版本
-    _checkPendingUpdate();
 
     // 延迟执行自动检查更新，避免影响首屏渲染
     Future.delayed(const Duration(seconds: 2), () {
@@ -71,16 +65,6 @@ class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver
           );
         }
       }
-    }
-  }
-
-  Future<void> _checkPendingUpdate() async {
-    final prefs = await SharedPreferences.getInstance();
-    final hasPending = prefs.getString(AppConstants.keyPendingUpdateVersion) != null;
-    if (mounted) {
-      setState(() {
-        _hasPendingUpdate = hasPending;
-      });
     }
   }
 
@@ -202,36 +186,18 @@ class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              // 保存待更新信息
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setString(AppConstants.keyPendingUpdateVersion, updateInfo.version);
-              await prefs.setString(AppConstants.keyPendingUpdateUrl, updateInfo.downloadUrl);
-              await prefs.setString(AppConstants.keyPendingUpdateChangelog, updateInfo.changelog);
-
-              // 更新状态显示红点
-              if (mounted) {
-                setState(() {
-                  _hasPendingUpdate = true;
-                });
-              }
+              await ref.read(settingsProvider.notifier).setPendingUpdate(
+                updateInfo.version,
+                updateInfo.downloadUrl,
+                updateInfo.changelog,
+              );
             },
             child: const Text('稍后'),
           ),
           FilledButton.icon(
             onPressed: () async {
               Navigator.pop(context);
-              // 清除待更新信息
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.remove(AppConstants.keyPendingUpdateVersion);
-              await prefs.remove(AppConstants.keyPendingUpdateUrl);
-              await prefs.remove(AppConstants.keyPendingUpdateChangelog);
-
-              // 更新状态隐藏红点
-              if (mounted) {
-                setState(() {
-                  _hasPendingUpdate = false;
-                });
-              }
+              await ref.read(settingsProvider.notifier).clearPendingUpdate();
 
               // 下载更新
               final uri = Uri.parse(updateInfo.downloadUrl);
@@ -392,7 +358,7 @@ class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver
           ),
           IconButton(
             icon: Badge(
-              isLabelVisible: _hasPendingUpdate,
+              isLabelVisible: settings.hasPendingUpdate,
               child: const Icon(Icons.settings),
             ),
             onPressed: () => context.push('/settings'),
