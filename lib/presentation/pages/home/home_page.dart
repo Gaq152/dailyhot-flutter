@@ -17,14 +17,16 @@ class HomePage extends ConsumerStatefulWidget {
   ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends ConsumerState<HomePage> {
+class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver {
   bool _isRefreshing = false;
   Timer? _updateCheckTimer;
   bool _hasPendingUpdate = false;
+  DateTime _lastActiveTime = DateTime.now();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     // 检查是否有待更新版本
     _checkPendingUpdate();
@@ -49,8 +51,27 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _updateCheckTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      _lastActiveTime = DateTime.now();
+    } else if (state == AppLifecycleState.resumed) {
+      final elapsed = DateTime.now().difference(_lastActiveTime);
+      if (elapsed.inHours >= 1) {
+        final settings = ref.read(settingsProvider);
+        final categories = settings.categories.where((c) => c.show);
+        for (final category in categories) {
+          ref.invalidate(
+            hotListProvider(HotListParams(type: category.name)),
+          );
+        }
+      }
+    }
   }
 
   Future<void> _checkPendingUpdate() async {

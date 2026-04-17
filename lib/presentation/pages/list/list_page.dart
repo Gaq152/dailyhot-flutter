@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../providers/hot_list_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../../core/constants/app_constants.dart';
@@ -19,13 +20,13 @@ class ListPage extends ConsumerStatefulWidget {
 
 class _ListPageState extends ConsumerState<ListPage> {
   late String currentType;
-  int currentPage = 1;
-  static const int itemsPerPage = 20;
+  int _displayedCount = 20;
   bool _isRefreshing = false;
-  int _refreshTrigger = 0; // 用于触发列表项重新动画
+  int _refreshTrigger = 0;
   bool _hasPendingUpdate = false;
-  bool _errorShownForCurrentData = false; // 当前数据的错误是否已显示过
+  bool _errorShownForCurrentData = false;
   final ScrollController _tabScrollController = ScrollController();
+  final ScrollController _contentScrollController = ScrollController();
   bool _initialScrollDone = false;
   final Map<String, GlobalKey> _tabKeys = {};
   List<dynamic> _cachedCategories = [];
@@ -35,18 +36,27 @@ class _ListPageState extends ConsumerState<ListPage> {
     super.initState();
     currentType = widget.type;
     _checkPendingUpdate();
-    // 首次进入后执行初始滚动，延迟执行确保 Tab 已构建
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToSelectedTabInitial();
     });
+    _contentScrollController.addListener(_onContentScroll);
   }
 
   @override
   void dispose() {
     _tabScrollController.dispose();
-    // 离开页面时清除 SnackBar
+    _contentScrollController.dispose();
     ScaffoldMessenger.of(context).clearSnackBars();
     super.dispose();
+  }
+
+  void _onContentScroll() {
+    if (_contentScrollController.position.pixels >=
+        _contentScrollController.position.maxScrollExtent - 200) {
+      setState(() {
+        _displayedCount += 20;
+      });
+    }
   }
 
   Future<void> _checkPendingUpdate() async {
@@ -486,7 +496,7 @@ class _ListPageState extends ConsumerState<ListPage> {
                 if (selected && currentType != category.name) {
                   setState(() {
                     currentType = category.name;
-                    currentPage = 1;
+                    _displayedCount = 20;
                     _errorShownForCurrentData = false;
                   });
 
@@ -506,35 +516,36 @@ class _ListPageState extends ConsumerState<ListPage> {
   Widget _buildContent(dynamic data) {
     final settings = ref.watch(settingsProvider);
     final totalItems = data.data.length;
-    final startIndex = (currentPage - 1) * itemsPerPage;
-    final endIndex = (startIndex + itemsPerPage).clamp(0, totalItems);
-    final pageData = data.data.sublist(startIndex, endIndex);
-    final totalPages = (totalItems / itemsPerPage).ceil();
+    final visibleCount = _displayedCount.clamp(0, totalItems);
+    final pageData = data.data.sublist(0, visibleCount);
+    final hasMore = visibleCount < totalItems;
 
-    return Column(
-      children: [
-        // List
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            itemCount: pageData.length,
-            itemBuilder: (context, index) {
-              final item = pageData[index];
-              final globalIndex = startIndex + index;
-              return _AnimatedListItem(
-                key: ValueKey(globalIndex),
-                index: index,
-                isRefreshing: _isRefreshing,
-                refreshTrigger: _refreshTrigger,
-                child: _buildListItem(item, globalIndex, settings, _getCurrentCategory()),
-              );
-            },
-          ),
-        ),
-
-        // Pagination
-        if (totalPages > 1) _buildPagination(totalPages),
-      ],
+    return ListView.builder(
+      controller: _contentScrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      itemCount: pageData.length + (hasMore ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index >= pageData.length) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          );
+        }
+        final item = pageData[index];
+        return _AnimatedListItem(
+          key: ValueKey(index),
+          index: index,
+          isRefreshing: _isRefreshing,
+          refreshTrigger: _refreshTrigger,
+          child: _buildListItem(item, index, settings, _getCurrentCategory()),
+        );
+      },
     );
   }
 
@@ -641,119 +652,55 @@ class _ListPageState extends ConsumerState<ListPage> {
     );
   }
 
-  Widget _buildPagination(int totalPages) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    // 根据屏幕宽度决定显示的页码数量
-    final maxPages = screenWidth < 400 ? 3 : (screenWidth < 600 ? 5 : 7);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.chevron_left),
-            onPressed: currentPage > 1
-                ? () => setState(() => currentPage--)
-                : null,
-          ),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 4,
-              children: List.generate(
-                totalPages > maxPages ? maxPages : totalPages,
-                (index) {
-                  int pageNum;
-                  final halfMax = maxPages ~/ 2;
-                  if (totalPages <= maxPages) {
-                    pageNum = index + 1;
-                  } else if (currentPage <= halfMax + 1) {
-                    pageNum = index + 1;
-                  } else if (currentPage >= totalPages - halfMax) {
-                    pageNum = totalPages - maxPages + index + 1;
-                  } else {
-                    pageNum = currentPage - halfMax + index;
-                  }
-
-                  return currentPage == pageNum
-                      ? CircleAvatar(
-                          radius: 18,
-                          child: Text('$pageNum'),
-                        )
-                      : InkWell(
-                          onTap: () => setState(() => currentPage = pageNum),
-                          borderRadius: BorderRadius.circular(18),
-                          child: Container(
-                            width: 36,
-                            height: 36,
-                            alignment: Alignment.center,
-                            child: Text('$pageNum'),
-                          ),
-                        );
-                },
+  Widget _buildLoadingSkeleton() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Shimmer.fromColors(
+      baseColor: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
+      highlightColor: isDark ? Colors.grey.shade600 : Colors.grey.shade100,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Container(
+              height: 60,
+              decoration: BoxDecoration(
+                color: Colors.grey,
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
-          ),
-          const SizedBox(width: 4),
-          IconButton(
-            icon: const Icon(Icons.chevron_right),
-            onPressed: currentPage < totalPages
-                ? () => setState(() => currentPage++)
-                : null,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLoadingSkeleton() {
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          // Header skeleton
-          Container(
-            height: 60,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade300,
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          const SizedBox(height: 20),
-          // List skeleton
-          Expanded(
-            child: ListView.separated(
-              itemCount: 10,
-              separatorBuilder: (_, __) => const SizedBox(height: 16),
-              itemBuilder: (context, index) {
-                return Row(
-                  children: [
-                    Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Container(
-                        height: 40,
+            const SizedBox(height: 20),
+            Expanded(
+              child: ListView.separated(
+                itemCount: 10,
+                separatorBuilder: (_, __) => const SizedBox(height: 16),
+                itemBuilder: (context, index) {
+                  return Row(
+                    children: [
+                      Container(
+                        width: 24,
+                        height: 24,
                         decoration: BoxDecoration(
-                          color: Colors.grey.shade300,
+                          color: Colors.grey,
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                    ),
-                  ],
-                );
-              },
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Container(
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.grey,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

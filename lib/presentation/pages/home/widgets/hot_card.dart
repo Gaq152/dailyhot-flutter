@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../../../data/models/hot_list_category.dart';
 import '../../../../data/models/data_result.dart';
 import '../../../providers/hot_list_provider.dart';
@@ -277,35 +278,40 @@ class _HotCardState extends ConsumerState<HotCard> {
   }
 
   Widget _buildLoadingSkeleton() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(
-          5,
-          (index) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              children: [
-                Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Container(
-                    height: 14,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Shimmer.fromColors(
+      baseColor: isDark ? Colors.grey.shade700 : Colors.grey.shade300,
+      highlightColor: isDark ? Colors.grey.shade600 : Colors.grey.shade100,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(
+            5,
+            (index) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Container(
+                    width: 20,
+                    height: 20,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
+                      color: Colors.grey,
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Container(
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: Colors.grey,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
