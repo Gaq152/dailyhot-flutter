@@ -3,6 +3,7 @@ import '../../data/datasources/remote/api_client.dart';
 import '../../data/datasources/local/local_storage.dart';
 import '../../data/repositories/hot_list_repository.dart';
 import '../../data/services/request_queue_service.dart';
+import '../../data/services/update_download_service.dart';
 
 /// Request Queue Service Provider
 final requestQueueServiceProvider = Provider<RequestQueueService>((ref) {
@@ -25,4 +26,9 @@ final hotListRepositoryProvider = Provider<HotListRepository>((ref) {
     apiClient: ref.watch(apiClientProvider),
     localStorage: ref.watch(localStorageProvider),
   );
+});
+
+/// 应用内更新下载服务 Provider
+final updateDownloadServiceProvider = Provider<UpdateDownloadService>((ref) {
+  return UpdateDownloadService();
 });

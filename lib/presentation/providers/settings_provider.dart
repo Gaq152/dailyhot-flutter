@@ -48,7 +48,8 @@ class SettingsState {
       hasPendingUpdate: hasPendingUpdate ?? this.hasPendingUpdate,
       pendingUpdateVersion: pendingUpdateVersion ?? this.pendingUpdateVersion,
       pendingUpdateUrl: pendingUpdateUrl ?? this.pendingUpdateUrl,
-      pendingUpdateChangelog: pendingUpdateChangelog ?? this.pendingUpdateChangelog,
+      pendingUpdateChangelog:
+          pendingUpdateChangelog ?? this.pendingUpdateChangelog,
     );
   }
 }
@@ -58,13 +59,15 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   final SharedPreferences _prefs;
 
   SettingsNotifier(this._prefs)
-      : super(SettingsState(
+    : super(
+        SettingsState(
           themeMode: ThemeMode.system,
           themeAuto: true,
           listFontSize: 16.0,
           categories: HotListData.defaultCategories,
           autoCheckUpdate: true,
-        )) {
+        ),
+      ) {
     _loadSettings();
   }
 
@@ -100,10 +103,12 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
         if (savedMap.containsKey(defaultCategory.name)) {
           // 已保存的接口：使用保存的order和show
           final saved = savedMap[defaultCategory.name]!;
-          categories.add(defaultCategory.copyWith(
-            order: saved['order'] as int,
-            show: saved['show'] as bool,
-          ));
+          categories.add(
+            defaultCategory.copyWith(
+              order: saved['order'] as int,
+              show: saved['show'] as bool,
+            ),
+          );
         } else {
           // 新增的接口：使用默认值
           categories.add(defaultCategory);
@@ -189,7 +194,11 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   }
 
   /// 设置待更新信息
-  Future<void> setPendingUpdate(String version, String url, String changelog) async {
+  Future<void> setPendingUpdate(
+    String version,
+    String url,
+    String changelog,
+  ) async {
     await _prefs.setString('pending_update_version', version);
     await _prefs.setString('pending_update_url', url);
     await _prefs.setString('pending_update_changelog', changelog);
@@ -228,7 +237,8 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
 }
 
 /// 设置 Provider
-final settingsProvider =
-    StateNotifierProvider<SettingsNotifier, SettingsState>((ref) {
-  throw UnimplementedError('settingsProvider must be overridden');
-});
+final settingsProvider = StateNotifierProvider<SettingsNotifier, SettingsState>(
+  (ref) {
+    throw UnimplementedError('settingsProvider must be overridden');
+  },
+);

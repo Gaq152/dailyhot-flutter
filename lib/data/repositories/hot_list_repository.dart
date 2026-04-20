@@ -8,10 +8,7 @@ class HotListRepository {
   final ApiClient apiClient;
   final LocalStorage localStorage;
 
-  HotListRepository({
-    required this.apiClient,
-    required this.localStorage,
-  });
+  HotListRepository({required this.apiClient, required this.localStorage});
 
   /// 过滤空标题并创建新的响应对象
   HotListResponse _filterResponse(HotListResponse response) {

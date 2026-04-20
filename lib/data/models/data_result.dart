@@ -75,18 +75,12 @@ class DataResult<T> {
 
   /// 创建成功结果（来自网络）
   factory DataResult.success(T data) {
-    return DataResult(
-      data: data,
-      source: DataSource.network,
-    );
+    return DataResult(data: data, source: DataSource.network);
   }
 
   /// 创建新鲜缓存结果
   factory DataResult.fromFreshCache(T data) {
-    return DataResult(
-      data: data,
-      source: DataSource.freshCache,
-    );
+    return DataResult(data: data, source: DataSource.freshCache);
   }
 
   /// 创建过期缓存结果（网络失败时的降级）
@@ -105,10 +99,7 @@ class DataResult<T> {
 
   /// 创建过期缓存结果（冷启动时先展示，后台刷新）
   factory DataResult.fromExpiredCache(T data) {
-    return DataResult(
-      data: data,
-      source: DataSource.staleCache,
-    );
+    return DataResult(data: data, source: DataSource.staleCache);
   }
 
   /// 创建失败结果（无数据可用）

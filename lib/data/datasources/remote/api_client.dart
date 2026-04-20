@@ -102,7 +102,10 @@ class ApiClient {
 
   /// 获取热榜数据
   /// [forceRefresh] 为 true 时，添加 cache=false 参数绕过 API 服务的 Redis 缓存
-  Future<HotListResponse> getHotList(String type, {bool forceRefresh = false}) async {
+  Future<HotListResponse> getHotList(
+    String type, {
+    bool forceRefresh = false,
+  }) async {
     try {
       final queryParams = forceRefresh ? {'cache': 'false'} : null;
       final response = await _dio.get('/$type', queryParameters: queryParams);

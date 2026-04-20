@@ -2,11 +2,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../providers/hot_list_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/connectivity_provider.dart';
+import '../../providers/update_download_provider.dart';
+import '../../../data/models/update_download_state.dart';
 import '../../../data/services/update_service.dart';
+import '../../widgets/update_dialog.dart';
+import '../../widgets/update_download_banner.dart';
 import 'widgets/hot_card.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -16,10 +19,12 @@ class HomePage extends ConsumerStatefulWidget {
   ConsumerState<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver {
+class _HomePageState extends ConsumerState<HomePage>
+    with WidgetsBindingObserver {
   bool _isRefreshing = false;
   Timer? _updateCheckTimer;
   DateTime _lastActiveTime = DateTime.now();
+  UpdateInfo? _lastUpdateInfo;
 
   @override
   void initState() {
@@ -34,14 +39,11 @@ class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver
     });
 
     // 设置定期检查（6小时）
-    _updateCheckTimer = Timer.periodic(
-      const Duration(hours: 6),
-      (_) {
-        if (mounted) {
-          _autoCheckUpdate();
-        }
-      },
-    );
+    _updateCheckTimer = Timer.periodic(const Duration(hours: 6), (_) {
+      if (mounted) {
+        _autoCheckUpdate();
+      }
+    });
   }
 
   @override
@@ -61,9 +63,7 @@ class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver
         final settings = ref.read(settingsProvider);
         final categories = settings.categories.where((c) => c.show);
         for (final category in categories) {
-          ref.invalidate(
-            hotListProvider(HotListParams(type: category.name)),
-          );
+          ref.invalidate(hotListProvider(HotListParams(type: category.name)));
         }
       }
     }
@@ -84,134 +84,12 @@ class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver
 
       // 如果有新版本，显示更新对话框
       if (updateInfo != null && mounted) {
-        _showUpdateDialog(updateInfo);
+        _lastUpdateInfo = updateInfo;
+        showUpdateDialog(context, ref, updateInfo);
       }
     } catch (e) {
       // 静默失败，不打扰用户
     }
-  }
-
-  /// 显示更新对话框
-  void _showUpdateDialog(UpdateInfo updateInfo) async {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(
-              Icons.celebration,
-              color: Colors.orange.shade600,
-              size: 28,
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                '发现新版本',
-                style: TextStyle(fontSize: 20),
-              ),
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 版本号标签
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    'v${updateInfo.version}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // 更新内容
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.new_releases,
-                            size: 18,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '更新内容',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        updateInfo.changelog,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          height: 1.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              await ref.read(settingsProvider.notifier).setPendingUpdate(
-                updateInfo.version,
-                updateInfo.downloadUrl,
-                updateInfo.changelog,
-              );
-            },
-            child: const Text('稍后'),
-          ),
-          FilledButton.icon(
-            onPressed: () async {
-              Navigator.pop(context);
-              await ref.read(settingsProvider.notifier).clearPendingUpdate();
-
-              // 下载更新
-              final uri = Uri.parse(updateInfo.downloadUrl);
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            },
-            icon: const Icon(Icons.download, size: 18),
-            label: const Text('立即下载'),
-          ),
-        ],
-      ),
-    );
   }
 
   /// 刷新所有榜单数据
@@ -337,10 +215,24 @@ class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
-    final categories = settings.categories
-        .where((c) => c.show)
-        .toList()
+    final categories = settings.categories.where((c) => c.show).toList()
       ..sort((a, b) => a.order.compareTo(b.order));
+
+    // 下载完成时弹出确认安装提示
+    ref.listen<UpdateDownloadState>(updateDownloadProvider, (prev, next) {
+      if (prev is! UpdateCompleted && next is UpdateCompleted && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('v${next.version} 下载完成'),
+            action: SnackBarAction(
+              label: '立即安装',
+              onPressed: () =>
+                  ref.read(updateDownloadProvider.notifier).install(),
+            ),
+          ),
+        );
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -382,12 +274,19 @@ class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver
               child: Container(
                 width: double.infinity,
                 color: Colors.orange.shade700,
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 16,
+                ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     ExcludeSemantics(
-                      child: Icon(Icons.wifi_off, size: 16, color: Colors.white),
+                      child: Icon(
+                        Icons.wifi_off,
+                        size: 16,
+                        color: Colors.white,
+                      ),
                     ),
                     SizedBox(width: 8),
                     ExcludeSemantics(
@@ -400,6 +299,7 @@ class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver
                 ),
               ),
             ),
+          UpdateDownloadBanner(retryInfo: _lastUpdateInfo),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -427,38 +327,35 @@ class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver
                   spacing = 12;
                 }
 
-                return AnimatedOpacity(
-                  opacity: _isRefreshing ? 0.3 : 1.0,
-                  duration: const Duration(milliseconds: 200),
-                  child: GridView.builder(
-              padding: EdgeInsets.all(spacing),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: columns,
-                childAspectRatio: aspectRatio,
-                crossAxisSpacing: spacing,
-                mainAxisSpacing: spacing,
-              ),
-              itemCount: categories.length,
-              itemBuilder: (context, index) {
-                final category = categories[index];
-                return _AnimatedCard(
-                  index: index,
-                  isRefreshing: _isRefreshing,
-                  child: Semantics(
-                    button: true,
-                    label: '${category.label}榜单，点击查看完整列表',
-                    child: HotCard(
-                      category: category,
-                      index: index,
-                      onTap: () => context.push('/list/${category.name}'),
-                    ),
+                return GridView.builder(
+                  padding: EdgeInsets.all(spacing),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: columns,
+                    childAspectRatio: aspectRatio,
+                    crossAxisSpacing: spacing,
+                    mainAxisSpacing: spacing,
                   ),
+                  itemCount: categories.length,
+                  itemBuilder: (context, index) {
+                    final category = categories[index];
+                    return _AnimatedCard(
+                      index: index,
+                      isRefreshing: _isRefreshing,
+                      child: Semantics(
+                        button: true,
+                        label: '${category.label}榜单，点击查看完整列表',
+                        child: HotCard(
+                          category: category,
+                          index: index,
+                          externalRefreshing: _isRefreshing,
+                          onTap: () => context.push('/list/${category.name}'),
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
-          );
-        },
-      ),
           ),
         ],
       ),
@@ -507,10 +404,7 @@ class _HomePageState extends ConsumerState<HomePage> with WidgetsBindingObserver
             children: [
               const Text(
                 '今日热榜',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -530,20 +424,29 @@ class _ClockText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<DateTime>(
-      stream: Stream.periodic(const Duration(seconds: 1), (_) => DateTime.now()),
+      stream: Stream.periodic(
+        const Duration(seconds: 1),
+        (_) => DateTime.now(),
+      ),
       initialData: DateTime.now(),
       builder: (context, snapshot) {
         final now = snapshot.data!;
-        final weekday = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][now.weekday % 7];
+        final weekday = [
+          '周日',
+          '周一',
+          '周二',
+          '周三',
+          '周四',
+          '周五',
+          '周六',
+        ][now.weekday % 7];
         return Text(
           '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')} $weekday',
           style: TextStyle(
             fontSize: 11,
             color: Theme.of(context).colorScheme.onSurfaceVariant,
             fontFamily: 'monospace',
-            fontFeatures: const [
-              FontFeature.tabularFigures(),
-            ],
+            fontFeatures: const [FontFeature.tabularFigures()],
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -584,23 +487,6 @@ class _AnimatedCardState extends State<_AnimatedCard> {
         });
       }
     });
-  }
-
-  @override
-  void didUpdateWidget(_AnimatedCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // 刷新时重新触发动画
-    if (!oldWidget.isRefreshing && widget.isRefreshing) {
-      setState(() => _isVisible = false);
-    } else if (oldWidget.isRefreshing && !widget.isRefreshing) {
-      // 刷新完成，逐个显示
-      final delay = (widget.index ~/ 4) * 30 + 100;
-      Future.delayed(Duration(milliseconds: delay), () {
-        if (mounted) {
-          setState(() => _isVisible = true);
-        }
-      });
-    }
   }
 
   @override

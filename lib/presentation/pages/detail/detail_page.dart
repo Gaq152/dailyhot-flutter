@@ -24,7 +24,8 @@ class DetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final hasDesc = item.desc != null &&
+    final hasDesc =
+        item.desc != null &&
         item.desc!.isNotEmpty &&
         !_isPlaceholderDesc(item.desc!);
 
@@ -67,9 +68,7 @@ class DetailPage extends StatelessWidget {
                     placeholder: (context, url) => Container(
                       height: 200,
                       color: theme.colorScheme.surfaceContainerHighest,
-                      child: const Center(
-                        child: CircularProgressIndicator(),
-                      ),
+                      child: const Center(child: CircularProgressIndicator()),
                     ),
                     errorWidget: (context, url, error) => Container(
                       height: 200,
@@ -245,7 +244,10 @@ class DetailPage extends StatelessWidget {
                 ),
                 onTapLink: (text, href, title) {
                   if (href != null) {
-                    launchUrl(Uri.parse(href), mode: LaunchMode.externalApplication);
+                    launchUrl(
+                      Uri.parse(href),
+                      mode: LaunchMode.externalApplication,
+                    );
                   }
                 },
               ),
@@ -272,7 +274,9 @@ class DetailPage extends StatelessWidget {
                     Text(
                       '点击下方按钮在浏览器中查看完整内容',
                       style: TextStyle(
-                        color: theme.colorScheme.onSurfaceVariant.withAlpha(180),
+                        color: theme.colorScheme.onSurfaceVariant.withAlpha(
+                          180,
+                        ),
                         fontSize: 14,
                       ),
                     ),
@@ -349,7 +353,10 @@ class DetailPage extends StatelessWidget {
 
     // 4. 处理 "GitHub - user/repo:" 格式，转换为可点击链接
     result = result.replaceAllMapped(
-      RegExp(r'GitHub(?:\s*:\s*GitHub)?\s*-\s*([a-zA-Z0-9_-]+/[a-zA-Z0-9_.-]+)\s*:', caseSensitive: false),
+      RegExp(
+        r'GitHub(?:\s*:\s*GitHub)?\s*-\s*([a-zA-Z0-9_-]+/[a-zA-Z0-9_.-]+)\s*:',
+        caseSensitive: false,
+      ),
       (match) {
         final repo = match.group(1) ?? '';
         return '**[GitHub - $repo](https://github.com/$repo)**:';
@@ -416,8 +423,8 @@ class DetailPage extends StatelessWidget {
     // Box drawing 字符和常见流程图符号
     final asciiArtPattern = RegExp(
       r'[┌┐└┘├┤┬┴┼─│═║╔╗╚╝╠╣╦╩╬░▒▓█▄▀■□●○◆◇→←↑↓↔↕∥]|'
-      r'\+[-=]+\+|'  // +---+ 风格
-      r'\|.*\|',     // |...| 风格
+      r'\+[-=]+\+|' // +---+ 风格
+      r'\|.*\|', // |...| 风格
     );
 
     for (final line in lines) {
@@ -487,15 +494,7 @@ class DetailPage extends StatelessWidget {
 
   /// 检查是否为无意义的占位文本
   bool _isPlaceholderDesc(String desc) {
-    const placeholders = [
-      '该视频暂无简介',
-      '暂无简介',
-      '-',
-      '无',
-      'null',
-      '暂无描述',
-      '暂无内容',
-    ];
+    const placeholders = ['该视频暂无简介', '暂无简介', '-', '无', 'null', '暂无描述', '暂无内容'];
     final trimmed = desc.trim();
     return placeholders.contains(trimmed) || trimmed.length < 2;
   }

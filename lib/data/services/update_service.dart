@@ -7,7 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 class UpdateInfo {
   final String version;
   final String downloadUrl;
-  final List<String> mirrorUrls;  // 多个下载源（降级策略）
+  final List<String> mirrorUrls; // 多个下载源（降级策略）
   final String changelog;
   final DateTime publishedAt;
 
@@ -38,8 +38,10 @@ class UpdateInfo {
 
     return UpdateInfo(
       version: (json['tag_name'] as String).replaceFirst('v', ''),
-      downloadUrl: mirrors.isNotEmpty ? mirrors.first : originalUrl,  // 默认使用第一个镜像
-      mirrorUrls: mirrors,  // 保存所有镜像供降级使用
+      downloadUrl: mirrors.isNotEmpty
+          ? mirrors.first
+          : originalUrl, // 默认使用第一个镜像
+      mirrorUrls: mirrors, // 保存所有镜像供降级使用
       changelog: changelog,
       publishedAt: DateTime.parse(json['published_at']),
     );

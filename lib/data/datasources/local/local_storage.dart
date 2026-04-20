@@ -29,14 +29,16 @@ class LocalStorage {
       // 转换 Map<dynamic, dynamic> 为 Map<String, dynamic>
       final data = cache['data'];
       if (data is Map) {
-        return Map<String, dynamic>.from(data.map((key, value) {
-          if (value is Map) {
-            return MapEntry(key.toString(), Map<String, dynamic>.from(value));
-          } else if (value is List) {
-            return MapEntry(key.toString(), _convertList(value));
-          }
-          return MapEntry(key.toString(), value);
-        }));
+        return Map<String, dynamic>.from(
+          data.map((key, value) {
+            if (value is Map) {
+              return MapEntry(key.toString(), Map<String, dynamic>.from(value));
+            } else if (value is List) {
+              return MapEntry(key.toString(), _convertList(value));
+            }
+            return MapEntry(key.toString(), value);
+          }),
+        );
       }
       return null;
     } catch (e) {
@@ -64,14 +66,16 @@ class LocalStorage {
   List<dynamic> _convertList(List<dynamic> list) {
     return list.map((item) {
       if (item is Map) {
-        return Map<String, dynamic>.from(item.map((key, value) {
-          if (value is Map) {
-            return MapEntry(key.toString(), Map<String, dynamic>.from(value));
-          } else if (value is List) {
-            return MapEntry(key.toString(), _convertList(value));
-          }
-          return MapEntry(key.toString(), value);
-        }));
+        return Map<String, dynamic>.from(
+          item.map((key, value) {
+            if (value is Map) {
+              return MapEntry(key.toString(), Map<String, dynamic>.from(value));
+            } else if (value is List) {
+              return MapEntry(key.toString(), _convertList(value));
+            }
+            return MapEntry(key.toString(), value);
+          }),
+        );
       } else if (item is List) {
         return _convertList(item);
       }

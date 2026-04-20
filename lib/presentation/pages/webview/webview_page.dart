@@ -5,11 +5,7 @@ class WebViewPage extends StatefulWidget {
   final String url;
   final String title;
 
-  const WebViewPage({
-    super.key,
-    required this.url,
-    this.title = '加载中...',
-  });
+  const WebViewPage({super.key, required this.url, this.title = '加载中...'});
 
   @override
   State<WebViewPage> createState() => _WebViewPageState();
@@ -69,11 +65,7 @@ class _WebViewPageState extends State<WebViewPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          _pageTitle,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
+        title: Text(_pageTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

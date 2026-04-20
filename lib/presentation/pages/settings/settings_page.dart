@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/settings_provider.dart';
 import '../../../data/services/update_service.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../widgets/update_dialog.dart';
+import '../../widgets/update_download_banner.dart';
 import '../about/about_page.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
@@ -126,345 +127,402 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final settingsNotifier = ref.read(settingsProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('全局设置'),
-      ),
-      body: ListView(
-        controller: _scrollController,
-        padding: const EdgeInsets.all(16),
+      appBar: AppBar(title: const Text('全局设置')),
+      body: Column(
         children: [
-          // 基础设置
-          _buildSectionTitle('基础设置'),
-          const SizedBox(height: 12),
-
-          // 明暗模式
-          _buildCard(
-            child: Column(
+          UpdateDownloadBanner(retryInfo: _pendingUpdate),
+          Expanded(
+            child: ListView(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(16),
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                // 基础设置
+                _buildSectionTitle('基础设置'),
+                const SizedBox(height: 12),
+
+                // 明暗模式
+                _buildCard(
+                  child: Column(
                     children: [
-                      const Text(
-                        '明暗模式',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                      ),
-                      Flexible(
-                        child: SegmentedButton<ThemeMode>(
-                          segments: const [
-                            ButtonSegment(
-                              value: ThemeMode.light,
-                              label: Text('浅色'),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              '明暗模式',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
-                            ButtonSegment(
-                              value: ThemeMode.dark,
-                              label: Text('深色'),
+                            Flexible(
+                              child: SegmentedButton<ThemeMode>(
+                                segments: const [
+                                  ButtonSegment(
+                                    value: ThemeMode.light,
+                                    label: Text('浅色'),
+                                  ),
+                                  ButtonSegment(
+                                    value: ThemeMode.dark,
+                                    label: Text('深色'),
+                                  ),
+                                ],
+                                selected: {
+                                  settings.themeMode == ThemeMode.system
+                                      ? (MediaQuery.of(
+                                                  context,
+                                                ).platformBrightness ==
+                                                Brightness.dark
+                                            ? ThemeMode.dark
+                                            : ThemeMode.light)
+                                      : settings.themeMode,
+                                },
+                                onSelectionChanged:
+                                    (Set<ThemeMode> newSelection) {
+                                      settingsNotifier.setThemeMode(
+                                        newSelection.first,
+                                      );
+                                    },
+                              ),
                             ),
                           ],
-                          selected: {settings.themeMode == ThemeMode.system
-                              ? (MediaQuery.of(context).platformBrightness == Brightness.dark
-                                  ? ThemeMode.dark
-                                  : ThemeMode.light)
-                              : settings.themeMode},
-                          onSelectionChanged: (Set<ThemeMode> newSelection) {
-                            settingsNotifier.setThemeMode(newSelection.first);
-                          },
+                        ),
+                      ),
+                      SwitchListTile(
+                        title: const Text('明暗模式跟随系统'),
+                        subtitle: const Text('明暗模式是否跟随系统当前模式'),
+                        value: settings.themeAuto,
+                        onChanged: (value) {
+                          settingsNotifier.setThemeAuto(value);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // 列表文本大小
+                _buildCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                        child: Text(
+                          '列表文本大小',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '我是将要显示的文字的大小',
+                            style: TextStyle(fontSize: settings.listFontSize),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        child: Column(
+                          children: [
+                            Slider(
+                              value: settings.listFontSize,
+                              min: 14.0,
+                              max: 20.0,
+                              divisions: 60,
+                              onChanged: (value) {
+                                settingsNotifier.setListFontSize(value);
+                              },
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '小一点',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.outline,
+                                  ),
+                                ),
+                                Text(
+                                  '默认',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.outline,
+                                  ),
+                                ),
+                                Text(
+                                  '最大',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.outline,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-                SwitchListTile(
-                  title: const Text('明暗模式跟随系统'),
-                  subtitle: const Text('明暗模式是否跟随系统当前模式'),
-                  value: settings.themeAuto,
-                  onChanged: (value) {
-                    settingsNotifier.setThemeAuto(value);
-                  },
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
+                const SizedBox(height: 12),
 
-          // 列表文本大小
-          _buildCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Padding(
-                  padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Text(
-                    '列表文本大小',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                // 榜单排序
+                _buildCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    '榜单排序',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '拖拽以排序，开关用以控制在页面中的显示状态',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.outline,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                _showRestoreDialog(context, settingsNotifier);
+                              },
+                              child: const Text('恢复默认'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ReorderableListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: settings.categories.length,
+                        onReorder: (oldIndex, newIndex) {
+                          if (oldIndex < newIndex) {
+                            newIndex -= 1;
+                          }
+                          final categories = List.of(settings.categories);
+                          final item = categories.removeAt(oldIndex);
+                          categories.insert(newIndex, item);
+
+                          // 更新order
+                          for (int i = 0; i < categories.length; i++) {
+                            categories[i] = categories[i].copyWith(order: i);
+                          }
+
+                          settingsNotifier.updateCategories(categories);
+                        },
+                        itemBuilder: (context, index) {
+                          final category = settings.categories[index];
+                          return Card(
+                            key: ValueKey(category.name),
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 4,
+                            ),
+                            child: MergeSemantics(
+                              child: ListTile(
+                                leading: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.asset(
+                                    category.icon,
+                                    width: 40,
+                                    height: 40,
+                                    excludeFromSemantics: true,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        width: 40,
+                                        height: 40,
+                                        color: Colors.grey.shade300,
+                                      );
+                                    },
+                                  ),
+                                ),
+                                title: Text(category.label),
+                                trailing: Switch(
+                                  value: category.show,
+                                  onChanged: (value) {
+                                    final updatedCategory = category.copyWith(
+                                      show: value,
+                                    );
+                                    final updatedCategories = settings
+                                        .categories
+                                        .map(
+                                          (c) => c.name == category.name
+                                              ? updatedCategory
+                                              : c,
+                                        )
+                                        .toList();
+                                    settingsNotifier.updateCategories(
+                                      updatedCategories,
+                                    );
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          '${category.label}榜单已${value ? "开启" : "关闭"}',
+                                        ),
+                                        duration: const Duration(seconds: 1),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                   ),
                 ),
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '我是将要显示的文字的大小',
-                      style: TextStyle(fontSize: settings.listFontSize),
+                const SizedBox(height: 24),
+
+                // 杂项设置
+                _buildSectionTitle('杂项设置'),
+                const SizedBox(height: 12),
+
+                _buildCard(
+                  child: ListTile(
+                    title: const Text('重置所有数据'),
+                    subtitle: const Text('重置所有数据，你的自定义设置都将会丢失'),
+                    trailing: FilledButton.tonal(
+                      onPressed: () {
+                        _showResetDialog(context, settingsNotifier);
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.errorContainer,
+                        foregroundColor: Theme.of(
+                          context,
+                        ).colorScheme.onErrorContainer,
+                      ),
+                      child: const Text('重置'),
                     ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                const SizedBox(height: 24),
+
+                // 关于
+                _buildSectionTitle('关于'),
+                const SizedBox(height: 12),
+
+                _buildCard(
                   child: Column(
                     children: [
-                      Slider(
-                        value: settings.listFontSize,
-                        min: 14.0,
-                        max: 20.0,
-                        divisions: 60,
+                      ListTile(
+                        leading: const Icon(Icons.info_outline),
+                        title: const Text('关于应用'),
+                        subtitle: Text('版本 $_appVersion'),
+                        trailing: const Icon(Icons.chevron_right, size: 20),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const AboutPage(),
+                            ),
+                          );
+                        },
+                      ),
+                      const Divider(height: 1, indent: 72),
+                      ListTile(
+                        leading: const Icon(Icons.system_update),
+                        title: Text(_pendingUpdate != null ? '检测到新版本' : '检查更新'),
+                        subtitle: Text(
+                          _pendingUpdate != null
+                              ? 'v${_pendingUpdate!.version}'
+                              : '查看是否有新版本',
+                        ),
+                        trailing: Badge(
+                          isLabelVisible: _pendingUpdate != null,
+                          child: const Icon(Icons.chevron_right, size: 20),
+                        ),
+                        onTap: () {
+                          if (_pendingUpdate != null) {
+                            showUpdateDialog(context, ref, _pendingUpdate!);
+                          } else {
+                            _checkForUpdates(context);
+                          }
+                        },
+                      ),
+                      const Divider(height: 1, indent: 72),
+                      SwitchListTile(
+                        secondary: const Icon(Icons.update),
+                        title: const Text('自动检查更新'),
+                        subtitle: const Text('启动时自动检查是否有新版本'),
+                        value: settings.autoCheckUpdate,
                         onChanged: (value) {
-                          settingsNotifier.setListFontSize(value);
+                          settingsNotifier.setAutoCheckUpdate(value);
                         },
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '小一点',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Theme.of(context).colorScheme.outline,
-                            ),
-                          ),
-                          Text(
-                            '默认',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Theme.of(context).colorScheme.outline,
-                            ),
-                          ),
-                          Text(
-                            '最大',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Theme.of(context).colorScheme.outline,
-                            ),
-                          ),
-                        ],
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
+                const SizedBox(height: 24),
 
-          // 榜单排序
-          _buildCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                // 底部版权信息
+                Center(
+                  child: Column(
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              '榜单排序',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '拖拽以排序，开关用以控制在页面中的显示状态',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Theme.of(context).colorScheme.outline,
-                              ),
-                            ),
-                          ],
+                      Text(
+                        '© 2025 DailyHot',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.outline,
                         ),
                       ),
-                      TextButton(
-                        onPressed: () {
-                          _showRestoreDialog(context, settingsNotifier);
-                        },
-                        child: const Text('恢复默认'),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Made with ❤️ by anlife',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
                       ),
+                      const SizedBox(height: 8),
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
-                ReorderableListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: settings.categories.length,
-                  onReorder: (oldIndex, newIndex) {
-                    if (oldIndex < newIndex) {
-                      newIndex -= 1;
-                    }
-                    final categories = List.of(settings.categories);
-                    final item = categories.removeAt(oldIndex);
-                    categories.insert(newIndex, item);
-
-                    // 更新order
-                    for (int i = 0; i < categories.length; i++) {
-                      categories[i] = categories[i].copyWith(order: i);
-                    }
-
-                    settingsNotifier.updateCategories(categories);
-                  },
-                  itemBuilder: (context, index) {
-                    final category = settings.categories[index];
-                    return Card(
-                      key: ValueKey(category.name),
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      child: MergeSemantics(
-                        child: ListTile(
-                        leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.asset(
-                            category.icon,
-                            width: 40,
-                            height: 40,
-                            excludeFromSemantics: true,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                width: 40,
-                                height: 40,
-                                color: Colors.grey.shade300,
-                              );
-                            },
-                          ),
-                        ),
-                        title: Text(category.label),
-                        trailing: Switch(
-                          value: category.show,
-                          onChanged: (value) {
-                            final updatedCategory = category.copyWith(show: value);
-                            final updatedCategories = settings.categories
-                                .map((c) => c.name == category.name ? updatedCategory : c)
-                                .toList();
-                            settingsNotifier.updateCategories(updatedCategories);
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('${category.label}榜单已${value ? "开启" : "关闭"}'),
-                                duration: const Duration(seconds: 1),
-                              ),
-                            );
-                          },
-                        ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // 杂项设置
-          _buildSectionTitle('杂项设置'),
-          const SizedBox(height: 12),
-
-          _buildCard(
-            child: ListTile(
-              title: const Text('重置所有数据'),
-              subtitle: const Text('重置所有数据，你的自定义设置都将会丢失'),
-              trailing: FilledButton.tonal(
-                onPressed: () {
-                  _showResetDialog(context, settingsNotifier);
-                },
-                style: FilledButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.errorContainer,
-                  foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
-                ),
-                child: const Text('重置'),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // 关于
-          _buildSectionTitle('关于'),
-          const SizedBox(height: 12),
-
-          _buildCard(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.info_outline),
-                  title: const Text('关于应用'),
-                  subtitle: Text('版本 $_appVersion'),
-                  trailing: const Icon(Icons.chevron_right, size: 20),
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const AboutPage(),
-                      ),
-                    );
-                  },
-                ),
-                const Divider(height: 1, indent: 72),
-                ListTile(
-                  leading: const Icon(Icons.system_update),
-                  title: Text(_pendingUpdate != null ? '检测到新版本' : '检查更新'),
-                  subtitle: Text(_pendingUpdate != null ? 'v${_pendingUpdate!.version}' : '查看是否有新版本'),
-                  trailing: Badge(
-                    isLabelVisible: _pendingUpdate != null,
-                    child: const Icon(Icons.chevron_right, size: 20),
-                  ),
-                  onTap: () {
-                    if (_pendingUpdate != null) {
-                      _showUpdateDialog(context, _pendingUpdate!);
-                    } else {
-                      _checkForUpdates(context);
-                    }
-                  },
-                ),
-                const Divider(height: 1, indent: 72),
-                SwitchListTile(
-                  secondary: const Icon(Icons.update),
-                  title: const Text('自动检查更新'),
-                  subtitle: const Text('启动时自动检查是否有新版本'),
-                  value: settings.autoCheckUpdate,
-                  onChanged: (value) {
-                    settingsNotifier.setAutoCheckUpdate(value);
-                  },
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // 底部版权信息
-          Center(
-            child: Column(
-              children: [
-                Text(
-                  '© 2025 DailyHot',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Made with ❤️ by gaq',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
-                ),
-                const SizedBox(height: 8),
               ],
             ),
           ),
@@ -478,7 +536,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 duration: const Duration(milliseconds: 200),
                 transitionBuilder: (child, animation) {
                   return RotationTransition(
-                    turns: Tween<double>(begin: 0.5, end: 1.0).animate(animation),
+                    turns: Tween<double>(
+                      begin: 0.5,
+                      end: 1.0,
+                    ).animate(animation),
                     child: FadeTransition(opacity: animation, child: child),
                   );
                 },
@@ -508,10 +569,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const SizedBox(width: 12),
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
         ],
       ),
@@ -523,10 +581,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: Colors.grey.shade200,
-          width: 1,
-        ),
+        side: BorderSide(color: Colors.grey.shade200, width: 1),
       ),
       child: child,
     );
@@ -594,21 +649,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  Future<void> _launchUrl(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
-
   Future<void> _checkForUpdates(BuildContext context) async {
     // 显示加载对话框
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
 
     try {
@@ -625,8 +671,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             _pendingUpdate = updateInfo;
           });
         }
-        // ignore: use_build_context_synchronously
-        _showUpdateDialog(context, updateInfo);
+        if (context.mounted) {
+          showUpdateDialog(context, ref, updateInfo);
+        }
       } else {
         // 已是最新版本
         if (context.mounted) {
@@ -652,166 +699,5 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         );
       }
     }
-  }
-
-  void _showUpdateDialog(BuildContext context, UpdateInfo updateInfo) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(
-              Icons.celebration,
-              color: Colors.orange.shade600,
-              size: 28,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                '发现新版本',
-                style: const TextStyle(fontSize: 20),
-              ),
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 版本号标签
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    'v${updateInfo.version}',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // 更新内容
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.new_releases,
-                            size: 18,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '更新内容',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        updateInfo.changelog,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          height: 1.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // 发布时间
-                Row(
-                  children: [
-                    Icon(
-                      Icons.schedule,
-                      size: 16,
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '发布于 ${_formatDate(updateInfo.publishedAt)}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              // 保存待更新信息
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setString(AppConstants.keyPendingUpdateVersion, updateInfo.version);
-              await prefs.setString(AppConstants.keyPendingUpdateUrl, updateInfo.downloadUrl);
-              await prefs.setString(AppConstants.keyPendingUpdateChangelog, updateInfo.changelog);
-            },
-            child: const Text('稍后'),
-          ),
-          FilledButton.icon(
-            onPressed: () async {
-              Navigator.pop(context);
-              // 清除待更新信息
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.remove(AppConstants.keyPendingUpdateVersion);
-              await prefs.remove(AppConstants.keyPendingUpdateUrl);
-              await prefs.remove(AppConstants.keyPendingUpdateChangelog);
-
-              // 更新状态
-              if (mounted) {
-                setState(() {
-                  _pendingUpdate = null;
-                });
-              }
-
-              // 下载更新
-              _launchUrl(updateInfo.downloadUrl);
-            },
-            icon: const Icon(Icons.download, size: 20),
-            label: const Text('立即下载'),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 12,
-              ),
-            ),
-          ),
-        ],
-        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-      ),
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 }

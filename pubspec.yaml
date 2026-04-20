@@ -38,6 +38,12 @@ dependencies:
   flutter_dotenv: ^5.1.0
   share_plus: ^10.0.0
   app_links: ^6.3.0
+  path_provider: ^2.1.4
+
+  # 应用内更新
+  background_downloader: ^9.5.0
+  install_plugin: ^2.1.0
+  permission_handler: ^11.3.0
 
   # JSON 序列化
   json_annotation: ^4.8.1

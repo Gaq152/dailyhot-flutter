@@ -10,10 +10,7 @@ import '../../data/models/hot_list_item.dart';
 final appRouter = GoRouter(
   initialLocation: '/',
   routes: [
-    GoRoute(
-      path: '/',
-      builder: (context, state) => const HomePage(),
-    ),
+    GoRoute(path: '/', builder: (context, state) => const HomePage()),
     GoRoute(
       path: '/list/:type',
       builder: (context, state) {
@@ -35,10 +32,7 @@ final appRouter = GoRouter(
         );
       },
     ),
-    GoRoute(
-      path: '/search',
-      builder: (context, state) => const SearchPage(),
-    ),
+    GoRoute(path: '/search', builder: (context, state) => const SearchPage()),
     GoRoute(
       path: '/settings',
       builder: (context, state) => const SettingsPage(),

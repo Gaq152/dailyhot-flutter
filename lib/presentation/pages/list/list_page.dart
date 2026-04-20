@@ -85,7 +85,10 @@ class _ListPageState extends ConsumerState<ListPage> {
     final screenWidth = MediaQuery.of(context).size.width;
 
     // 计算目标偏移量，使选中项居中
-    final targetOffset = (index * estimatedTabWidth) - (screenWidth / 2) + (estimatedTabWidth / 2);
+    final targetOffset =
+        (index * estimatedTabWidth) -
+        (screenWidth / 2) +
+        (estimatedTabWidth / 2);
 
     // 先跳转到大概位置
     if (_tabScrollController.hasClients) {
@@ -103,15 +106,7 @@ class _ListPageState extends ConsumerState<ListPage> {
 
   /// 检查是否为无意义的占位文本
   bool _isPlaceholderDesc(String desc) {
-    const placeholders = [
-      '该视频暂无简介',
-      '暂无简介',
-      '-',
-      '无',
-      'null',
-      '暂无描述',
-      '暂无内容',
-    ];
+    const placeholders = ['该视频暂无简介', '暂无简介', '-', '无', 'null', '暂无描述', '暂无内容'];
     final trimmed = desc.trim();
     return placeholders.contains(trimmed) || trimmed.length < 2;
   }
@@ -119,9 +114,7 @@ class _ListPageState extends ConsumerState<ListPage> {
   /// 获取当前分类信息
   dynamic _getCurrentCategory() {
     final settings = ref.read(settingsProvider);
-    final categories = settings.categories
-        .where((c) => c.show)
-        .toList()
+    final categories = settings.categories.where((c) => c.show).toList()
       ..sort((a, b) => a.order.compareTo(b.order));
     return categories.firstWhere(
       (c) => c.name == currentType,
@@ -148,9 +141,7 @@ class _ListPageState extends ConsumerState<ListPage> {
                 size: 20,
               ),
               const SizedBox(width: 12),
-              Expanded(
-                child: Text(result.userFriendlyMessage),
-              ),
+              Expanded(child: Text(result.userFriendlyMessage)),
             ],
           ),
           backgroundColor: Colors.orange.shade700,
@@ -192,9 +183,7 @@ class _ListPageState extends ConsumerState<ListPage> {
       // 先 invalidate provider，确保重新执行网络请求
       // 注意：必须在 read 之前 invalidate，否则会返回缓存结果
       ref.invalidate(
-        hotListProvider(
-          HotListParams(type: currentType, forceRefresh: true),
-        ),
+        hotListProvider(HotListParams(type: currentType, forceRefresh: true)),
       );
 
       // 使用 forceRefresh: true 触发强制刷新（绕过 API 服务的 Redis 缓存）
@@ -206,9 +195,7 @@ class _ListPageState extends ConsumerState<ListPage> {
 
       // 刷新后也使 forceRefresh: false 的 provider 失效，以便正常浏览使用新数据
       ref.invalidate(
-        hotListProvider(
-          HotListParams(type: currentType, forceRefresh: false),
-        ),
+        hotListProvider(HotListParams(type: currentType, forceRefresh: false)),
       );
 
       setState(() => _refreshTrigger++);
@@ -233,8 +220,8 @@ class _ListPageState extends ConsumerState<ListPage> {
                     result.hasError
                         ? '刷新失败，显示缓存数据'
                         : isFromCache
-                            ? '已加载 $itemCount 条数据（缓存）'
-                            : '已刷新 $itemCount 条数据',
+                        ? '已加载 $itemCount 条数据（缓存）'
+                        : '已刷新 $itemCount 条数据',
                   ),
                 ),
               ],
@@ -286,9 +273,7 @@ class _ListPageState extends ConsumerState<ListPage> {
       hotListProvider(HotListParams(type: currentType)),
     );
     final settings = ref.watch(settingsProvider);
-    final categories = settings.categories
-        .where((c) => c.show)
-        .toList()
+    final categories = settings.categories.where((c) => c.show).toList()
       ..sort((a, b) => a.order.compareTo(b.order));
 
     // 缓存分类列表，供首次滚动使用
@@ -342,12 +327,19 @@ class _ListPageState extends ConsumerState<ListPage> {
               child: Container(
                 width: double.infinity,
                 color: Colors.orange.shade700,
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 16,
+                ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     ExcludeSemantics(
-                      child: Icon(Icons.wifi_off, size: 16, color: Colors.white),
+                      child: Icon(
+                        Icons.wifi_off,
+                        size: 16,
+                        color: Colors.white,
+                      ),
                     ),
                     SizedBox(width: 8),
                     ExcludeSemantics(
@@ -378,10 +370,8 @@ class _ListPageState extends ConsumerState<ListPage> {
                 return _buildContent(result.data!);
               },
               loading: () => _buildLoadingSkeleton(),
-              error: (error, stack) => _buildError(
-                DataErrorType.unknownError,
-                '加载失败，请稍后重试',
-              ),
+              error: (error, stack) =>
+                  _buildError(DataErrorType.unknownError, '加载失败，请稍后重试'),
             ),
           ),
         ],
@@ -418,7 +408,10 @@ class _ListPageState extends ConsumerState<ListPage> {
             children: [
               Text(
                 data?.title ?? category.label,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -569,9 +562,15 @@ class _ListPageState extends ConsumerState<ListPage> {
     );
   }
 
-  Widget _buildListItem(HotListItem item, int index, dynamic settings, dynamic category) {
+  Widget _buildListItem(
+    HotListItem item,
+    int index,
+    dynamic settings,
+    dynamic category,
+  ) {
     final hotSuffix = item.hot != null ? '，热度${item.hotText}' : '';
-    final descSuffix = (item.desc != null &&
+    final descSuffix =
+        (item.desc != null &&
             item.desc!.isNotEmpty &&
             !_isPlaceholderDesc(item.desc!))
         ? '，${item.desc}'
@@ -605,7 +604,9 @@ class _ListPageState extends ConsumerState<ListPage> {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    if (item.desc != null && item.desc!.isNotEmpty && !_isPlaceholderDesc(item.desc!)) ...[
+                    if (item.desc != null &&
+                        item.desc!.isNotEmpty &&
+                        !_isPlaceholderDesc(item.desc!)) ...[
                       const SizedBox(height: 6),
                       Text(
                         item.desc!,
@@ -779,11 +780,7 @@ class _ListPageState extends ConsumerState<ListPage> {
                 color: iconColor.withAlpha(30),
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                icon,
-                size: 64,
-                color: iconColor,
-              ),
+              child: Icon(icon, size: 64, color: iconColor),
             ),
             const SizedBox(height: 32),
             Text(
@@ -797,10 +794,7 @@ class _ListPageState extends ConsumerState<ListPage> {
             const SizedBox(height: 12),
             Text(
               message,
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey.shade600,
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 40),
@@ -809,7 +803,10 @@ class _ListPageState extends ConsumerState<ListPage> {
               icon: const Icon(Icons.refresh, size: 20),
               label: const Text('立即重试', style: TextStyle(fontSize: 16)),
               style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 16,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -823,11 +820,14 @@ class _ListPageState extends ConsumerState<ListPage> {
 
   /// 打开详情页
   void _openDetail(HotListItem item, dynamic category) {
-    context.push('/detail', extra: {
-      'item': item,
-      'categoryIcon': category.icon,
-      'categoryLabel': category.label,
-    });
+    context.push(
+      '/detail',
+      extra: {
+        'item': item,
+        'categoryIcon': category.icon,
+        'categoryLabel': category.label,
+      },
+    );
   }
 
   /// 长按分享列表项

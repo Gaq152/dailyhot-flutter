@@ -53,7 +53,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
     for (final category in categories) {
       // 仅读取已缓存数据，未加载的分类跳过（避免触发一堆网络请求）
-      final async = ref.read(hotListProvider(HotListParams(type: category.name)));
+      final async = ref.read(
+        hotListProvider(HotListParams(type: category.name)),
+      );
       final response = async.valueOrNull?.data;
       if (response == null) continue;
 
@@ -84,18 +86,18 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     if (keyword.isEmpty) return const [];
     final lower = keyword.toLowerCase();
     return categories
-        .where((c) =>
-            c.label.toLowerCase().contains(lower) ||
-            c.name.toLowerCase().contains(lower))
+        .where(
+          (c) =>
+              c.label.toLowerCase().contains(lower) ||
+              c.name.toLowerCase().contains(lower),
+        )
         .toList();
   }
 
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
-    final categories = settings.categories
-        .where((c) => c.show)
-        .toList()
+    final categories = settings.categories.where((c) => c.show).toList()
       ..sort((a, b) => a.order.compareTo(b.order));
 
     final matchedCategories = _matchedCategories(_keyword, categories);
@@ -168,9 +170,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
               child: Text(
                 '匹配条目 $totalItems 条',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -178,7 +180,10 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           SliverMainAxisGroup(
             slivers: [
               SliverToBoxAdapter(
-                child: _GroupHeader(category: group.category, count: group.items.length),
+                child: _GroupHeader(
+                  category: group.category,
+                  count: group.items.length,
+                ),
               ),
               SliverList.builder(
                 itemCount: group.items.length,
@@ -200,11 +205,14 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   }
 
   void _openDetail(HotListItem item, HotListCategory category) {
-    context.push('/detail', extra: {
-      'item': item,
-      'categoryIcon': category.icon,
-      'categoryLabel': category.label,
-    });
+    context.push(
+      '/detail',
+      extra: {
+        'item': item,
+        'categoryIcon': category.icon,
+        'categoryLabel': category.label,
+      },
+    );
   }
 
   Future<void> _share(HotListItem item) async {
@@ -212,8 +220,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     await Share.share(
       '${item.title}\n${item.url}',
       subject: item.title,
-      sharePositionOrigin:
-          box != null ? box.localToGlobal(Offset.zero) & box.size : null,
+      sharePositionOrigin: box != null
+          ? box.localToGlobal(Offset.zero) & box.size
+          : null,
     );
   }
 }
@@ -239,10 +248,7 @@ class _SearchHint extends StatelessWidget {
           children: [
             Icon(Icons.search, size: 64, color: color.withAlpha(120)),
             const SizedBox(height: 16),
-            Text(
-              '输入关键字搜索全部榜单',
-              style: TextStyle(fontSize: 15, color: color),
-            ),
+            Text('输入关键字搜索全部榜单', style: TextStyle(fontSize: 15, color: color)),
             const SizedBox(height: 6),
             Text(
               '仅搜索已加载到本地的内容',
@@ -268,7 +274,11 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.sentiment_dissatisfied, size: 64, color: color.withAlpha(120)),
+            Icon(
+              Icons.sentiment_dissatisfied,
+              size: 64,
+              color: color.withAlpha(120),
+            ),
             const SizedBox(height: 16),
             Text(
               '未找到与 "$keyword" 匹配的内容',
@@ -303,9 +313,9 @@ class _CategorySection extends StatelessWidget {
         children: [
           Text(
             '匹配榜单 ${categories.length} 个',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -321,8 +331,11 @@ class _CategorySection extends StatelessWidget {
                       width: 20,
                       height: 20,
                       excludeFromSemantics: true,
-                      errorBuilder: (_, __, ___) =>
-                          Container(width: 20, height: 20, color: Colors.grey.shade300),
+                      errorBuilder: (_, __, ___) => Container(
+                        width: 20,
+                        height: 20,
+                        color: Colors.grey.shade300,
+                      ),
                     ),
                   ),
                   label: Text(c.label),
@@ -359,9 +372,9 @@ class _GroupHeader extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             category.label,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(width: 8),
           Text(
@@ -407,7 +420,10 @@ class _ResultItem extends StatelessWidget {
               _HighlightedText(
                 text: item.title,
                 keyword: keyword,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               if (item.desc != null && item.desc!.isNotEmpty) ...[
                 const SizedBox(height: 4),
@@ -415,10 +431,7 @@ class _ResultItem extends StatelessWidget {
                   text: item.desc!,
                   keyword: keyword,
                   maxLines: 2,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
               ],
             ],
@@ -446,14 +459,20 @@ class _HighlightedText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (keyword.isEmpty) {
-      return Text(text, style: style, maxLines: maxLines, overflow: maxLines != null ? TextOverflow.ellipsis : null);
+      return Text(
+        text,
+        style: style,
+        maxLines: maxLines,
+        overflow: maxLines != null ? TextOverflow.ellipsis : null,
+      );
     }
 
     final lowerText = text.toLowerCase();
     final lowerKeyword = keyword.toLowerCase();
     final spans = <TextSpan>[];
     var start = 0;
-    final highlightStyle = style?.copyWith(
+    final highlightStyle =
+        style?.copyWith(
           color: Theme.of(context).colorScheme.primary,
           fontWeight: FontWeight.bold,
         ) ??
@@ -473,10 +492,12 @@ class _HighlightedText extends StatelessWidget {
       if (index > start) {
         spans.add(TextSpan(text: text.substring(start, index), style: style));
       }
-      spans.add(TextSpan(
-        text: text.substring(index, index + keyword.length),
-        style: highlightStyle,
-      ));
+      spans.add(
+        TextSpan(
+          text: text.substring(index, index + keyword.length),
+          style: highlightStyle,
+        ),
+      );
       start = index + keyword.length;
     }
 

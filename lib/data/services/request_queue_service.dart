@@ -38,17 +38,21 @@ class RequestQueueService {
     _currentRequests++;
 
     // 执行请求
-    queuedRequest.request().then((result) {
-      // 请求成功，返回结果
-      queuedRequest.completer.complete(result);
-    }).catchError((error, stackTrace) {
-      // 请求失败，返回错误
-      queuedRequest.completer.completeError(error, stackTrace);
-    }).whenComplete(() {
-      // 请求完成，减少计数并处理下一个请求
-      _currentRequests--;
-      _processQueue();
-    });
+    queuedRequest
+        .request()
+        .then((result) {
+          // 请求成功，返回结果
+          queuedRequest.completer.complete(result);
+        })
+        .catchError((error, stackTrace) {
+          // 请求失败，返回错误
+          queuedRequest.completer.completeError(error, stackTrace);
+        })
+        .whenComplete(() {
+          // 请求完成，减少计数并处理下一个请求
+          _currentRequests--;
+          _processQueue();
+        });
 
     // 继续处理队列中的其他请求（如果还有空闲位置）
     _processQueue();
