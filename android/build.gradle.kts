@@ -19,12 +19,11 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
+// 兼容 AGP 8+：为未声明 namespace 的老插件（install_plugin 2.1.0 等）
+// 从其 AndroidManifest.xml 的 package 属性回填 namespace，避免构建时
+// "Namespace not specified" 报错。
+// 必须在 evaluationDependsOn 之前注册，否则子项目早已完成 evaluate。
 subprojects {
-    project.evaluationDependsOn(":app")
-
-    // 兼容 AGP 8+：为未声明 namespace 的老插件（install_plugin 2.1.0 等）
-    // 从其 AndroidManifest.xml 的 package 属性回填 namespace，避免构建时
-    // "Namespace not specified" 报错。
     afterEvaluate {
         val androidExt = project.extensions.findByName("android") ?: return@afterEvaluate
         val getNs = androidExt.javaClass.methods.firstOrNull { it.name == "getNamespace" }
@@ -44,6 +43,10 @@ subprojects {
             setNs.invoke(androidExt, pkg)
         }
     }
+}
+
+subprojects {
+    project.evaluationDependsOn(":app")
 }
 
 tasks.register<Delete>("clean") {
