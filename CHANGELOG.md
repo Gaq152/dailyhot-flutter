@@ -11,6 +11,31 @@
 - [ ] 支持收藏热点
 - [ ] Universal Link（https 方案，需要签名证书）
 - [ ] 搜索支持按热度/时间二次排序
+- [ ] APK SHA256 校验
+
+---
+
+## [1.5.0] - 2026-04-20
+
+### 新功能
+- 🚀 **应用内更新**：不再跳浏览器下载 APK，检测到新版本后一键在应用内下载并唤起系统安装器，全程可控
+- 📥 **后台下载 + 通知栏进度**：`background_downloader` 前台服务保活，退到后台甚至进程被杀都能续跑，通知栏实时显示下载进度 / 完成 / 失败
+- 🌐 **三级镜像自动降级**：ghfast.top → Cloudflare Worker → GitHub 原始地址按顺序重试，单个镜像失败自动切换下一个
+- 🧭 **下载状态横幅**：首页与设置页 AppBar 下方出现统一横幅，展示"准备 / 下载中 X% / 下载完成 / 下载失败"并支持取消、重试、立即安装
+- 📖 **更新日志页**：关于页新增"更新日志"入口，可切换"当前版本 / 全部版本"查看
+
+### 修复
+- 🐛 **刷新数据一致性**：`HotListParams` 的 `==` / `hashCode` 未比较 `forceRefresh`，导致 Riverpod family 将强制刷新与缓存读取视作同一 provider，首屏渲染的前几个渠道无论全局刷新还是详情页刷新都命中缓存
+- 🪟 **卡片整屏 loading**：全局刷新期间卡片会被替换成 loading 占位；现在保留原内容渲染，仅底部角标切换为"更新中"
+
+### 体验优化
+- 🎨 作者信息统一为 `anlife`（README / 关于页 / 设置页版权信息）
+- 🧱 `showUpdateDialog` 抽成公共组件，首页与设置页使用同一实现，不再互相漂移
+
+### 技术改进
+- 📦 新增依赖：`background_downloader ^9.5.0`、`install_plugin ^2.1.0`、`permission_handler ^11.3.0`、`path_provider ^2.1.4`
+- 🔐 Android 权限新增 `REQUEST_INSTALL_PACKAGES`、`POST_NOTIFICATIONS`、`FOREGROUND_SERVICE`(+`DATA_SYNC`)、`WAKE_LOCK`；`<queries>` 补 APK VIEW intent 供安装器查询
+- 🧩 新建 `UpdateDownloadState`（sealed 五态）、`UpdateDownloadService`（封装 downloader + installer + 权限）、`UpdateDownloadNotifier`（镜像降级状态机）、`UpdateDownloadBanner` / `showUpdateDialog` 两个共享 UI
 
 ---
 
