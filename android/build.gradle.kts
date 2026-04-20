@@ -54,6 +54,11 @@ subprojects {
 subprojects {
     if (project.name == "install_plugin") {
         afterEvaluate {
+            // compileSdk 太低（28）导致 lStar 等 API 31+ 属性找不到，提升到 34
+            val androidExt = project.extensions.findByName("android")
+            androidExt?.javaClass?.methods
+                ?.firstOrNull { it.name == "setCompileSdkVersion" && it.parameterCount == 1 && it.parameterTypes[0] == Int::class.java }
+                ?.invoke(androidExt, 34)
             tasks.matching { it.javaClass.name.contains("KotlinCompile") }.configureEach {
                 // 老版本 API：task.kotlinOptions.jvmTarget
                 runCatching {
