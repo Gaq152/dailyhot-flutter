@@ -45,6 +45,37 @@ subprojects {
     }
 }
 
+// 统一子项目 JVM target 到 Java 11（与 :app 对齐）
+// 老插件（install_plugin 2.1.0 等）未显式配置 compileOptions/kotlinOptions，
+// 新版 Kotlin Gradle Plugin 默认 JVM target=17，与 AGP Java target=1.8 不一致，
+// 导致 "Inconsistent JVM-target compatibility" 构建失败。
+subprojects {
+    afterEvaluate {
+        val androidExt = project.extensions.findByName("android") ?: return@afterEvaluate
+        // Java 编译目标
+        runCatching {
+            val co = androidExt.javaClass.methods
+                .firstOrNull { it.name == "getCompileOptions" }
+                ?.invoke(androidExt) ?: return@runCatching
+            co.javaClass.methods
+                .firstOrNull { it.name == "setSourceCompatibility" && it.parameterTypes.singleOrNull() == JavaVersion::class.java }
+                ?.invoke(co, JavaVersion.VERSION_11)
+            co.javaClass.methods
+                .firstOrNull { it.name == "setTargetCompatibility" && it.parameterTypes.singleOrNull() == JavaVersion::class.java }
+                ?.invoke(co, JavaVersion.VERSION_11)
+        }
+        // Kotlin 编译目标
+        runCatching {
+            val ko = androidExt.javaClass.methods
+                .firstOrNull { it.name == "getKotlinOptions" }
+                ?.invoke(androidExt) ?: return@runCatching
+            ko.javaClass.methods
+                .firstOrNull { it.name == "setJvmTarget" && it.parameterCount == 1 && it.parameterTypes[0] == String::class.java }
+                ?.invoke(ko, "11")
+        }
+    }
+}
+
 subprojects {
     project.evaluationDependsOn(":app")
 }
