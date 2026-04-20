@@ -9,12 +9,14 @@ class HotCard extends ConsumerStatefulWidget {
   final HotListCategory category;
   final VoidCallback onTap;
   final int index;
+  final bool externalRefreshing;
 
   const HotCard({
     super.key,
     required this.category,
     required this.onTap,
     this.index = 0,
+    this.externalRefreshing = false,
   });
 
   @override
@@ -28,32 +30,33 @@ class _HotCardState extends ConsumerState<HotCard> {
     if (_isBackgroundRefreshing) return;
     setState(() => _isBackgroundRefreshing = true);
 
-    ref.read(
-      hotListProvider(
-        HotListParams(type: widget.category.name, forceRefresh: true),
-      ).future,
-    ).then((_) {
-      if (mounted) {
-        setState(() => _isBackgroundRefreshing = false);
-        ref.invalidate(
+    ref
+        .read(
           hotListProvider(
-            HotListParams(type: widget.category.name, forceRefresh: false),
-          ),
-        );
-      }
-    }).catchError((_) {
-      if (mounted) {
-        setState(() => _isBackgroundRefreshing = false);
-      }
-    });
+            HotListParams(type: widget.category.name, forceRefresh: true),
+          ).future,
+        )
+        .then((_) {
+          if (mounted) {
+            setState(() => _isBackgroundRefreshing = false);
+            ref.invalidate(
+              hotListProvider(
+                HotListParams(type: widget.category.name, forceRefresh: false),
+              ),
+            );
+          }
+        })
+        .catchError((_) {
+          if (mounted) {
+            setState(() => _isBackgroundRefreshing = false);
+          }
+        });
   }
 
   @override
   Widget build(BuildContext context) {
     final hotListAsync = ref.watch(
-      hotListProvider(
-        HotListParams(type: widget.category.name),
-      ),
+      hotListProvider(HotListParams(type: widget.category.name)),
     );
 
     final brandColorBar = Container(
@@ -94,12 +97,15 @@ class _HotCardState extends ConsumerState<HotCard> {
               children: [
                 brandColorBar,
                 _buildHeader(context, data.subtitle),
-                Expanded(child: _buildList(context, data.data.take(5).toList())),
+                Expanded(
+                  child: _buildList(context, data.data.take(5).toList()),
+                ),
                 _buildFooter(
                   context,
                   data.updateTime,
                   isStale: result.isStaleData,
-                  isRefreshing: _isBackgroundRefreshing,
+                  isRefreshing:
+                      _isBackgroundRefreshing || widget.externalRefreshing,
                   errorType: result.hasError ? result.errorType : null,
                 ),
               ],
@@ -118,7 +124,11 @@ class _HotCardState extends ConsumerState<HotCard> {
               brandColorBar,
               _buildHeader(context, null),
               Expanded(child: _buildError(ref, DataErrorType.unknownError)),
-              _buildFooter(context, null, errorType: DataErrorType.unknownError),
+              _buildFooter(
+                context,
+                null,
+                errorType: DataErrorType.unknownError,
+              ),
             ],
           ),
         ),
@@ -147,8 +157,10 @@ class _HotCardState extends ConsumerState<HotCard> {
               width: iconSize,
               height: iconSize,
               excludeFromSemantics: true,
-              cacheWidth: (iconSize * MediaQuery.of(context).devicePixelRatio).toInt(),
-              cacheHeight: (iconSize * MediaQuery.of(context).devicePixelRatio).toInt(),
+              cacheWidth: (iconSize * MediaQuery.of(context).devicePixelRatio)
+                  .toInt(),
+              cacheHeight: (iconSize * MediaQuery.of(context).devicePixelRatio)
+                  .toInt(),
               errorBuilder: (context, error, stackTrace) {
                 return Container(
                   width: iconSize,
@@ -168,9 +180,9 @@ class _HotCardState extends ConsumerState<HotCard> {
                 Text(
                   widget.category.label,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        fontSize: isMobile ? 13 : 14,
-                      ),
+                    fontWeight: FontWeight.bold,
+                    fontSize: isMobile ? 13 : 14,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -179,9 +191,9 @@ class _HotCardState extends ConsumerState<HotCard> {
                   Text(
                     subtitle,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey,
-                          fontSize: isMobile ? 10 : 11,
-                        ),
+                      color: Colors.grey,
+                      fontSize: isMobile ? 10 : 11,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -224,9 +236,9 @@ class _HotCardState extends ConsumerState<HotCard> {
                 item.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontSize: isMobile ? 12 : 13,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontSize: isMobile ? 12 : 13),
               ),
             ),
           ],
@@ -368,11 +380,7 @@ class _HotCardState extends ConsumerState<HotCard> {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: isMobile ? 28 : 40,
-              color: iconColor,
-            ),
+            Icon(icon, size: isMobile ? 28 : 40, color: iconColor),
             SizedBox(height: isMobile ? 4 : 8),
             Text(
               title,
@@ -416,7 +424,10 @@ class _HotCardState extends ConsumerState<HotCard> {
                 );
               },
               icon: Icon(Icons.refresh, size: isMobile ? 11 : 14),
-              label: Text('立即重试', style: TextStyle(fontSize: isMobile ? 9 : 11)),
+              label: Text(
+                '立即重试',
+                style: TextStyle(fontSize: isMobile ? 9 : 11),
+              ),
               style: OutlinedButton.styleFrom(
                 padding: EdgeInsets.symmetric(
                   horizontal: isMobile ? 6 : 10,
@@ -489,9 +500,7 @@ class _HotCardState extends ConsumerState<HotCard> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest,
-        border: Border(
-          top: BorderSide(color: colorScheme.outlineVariant),
-        ),
+        border: Border(top: BorderSide(color: colorScheme.outlineVariant)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -503,20 +512,16 @@ class _HotCardState extends ConsumerState<HotCard> {
                   statusWidget,
                   const SizedBox(width: 4),
                 ] else if (statusIcon != null) ...[
-                  Icon(
-                    statusIcon,
-                    size: 12,
-                    color: textColor,
-                  ),
+                  Icon(statusIcon, size: 12, color: textColor),
                   const SizedBox(width: 4),
                 ],
                 Expanded(
                   child: Text(
                     displayText,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: textColor ?? colorScheme.onSurfaceVariant,
-                          fontSize: 11,
-                        ),
+                      color: textColor ?? colorScheme.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
