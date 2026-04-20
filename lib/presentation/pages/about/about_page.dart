@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_constants.dart';
+import 'changelog_page.dart';
 
 class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
@@ -38,9 +39,7 @@ class _AboutPageState extends State<AboutPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('关于应用'),
-      ),
+      appBar: AppBar(title: const Text('关于应用')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -65,10 +64,7 @@ class _AboutPageState extends State<AboutPage> {
             // 应用名称
             Text(
               AppConstants.appName,
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
 
@@ -93,20 +89,14 @@ class _AboutPageState extends State<AboutPage> {
             // 应用描述
             Text(
               '每日热点聚合应用',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey.shade700,
-              ),
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
             ),
             const SizedBox(height: 8),
 
             // 版权信息
             Text(
               '© 2025 DailyHot',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade600,
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
             ),
             const SizedBox(height: 40),
 
@@ -119,7 +109,23 @@ class _AboutPageState extends State<AboutPage> {
                     icon: Icons.code,
                     iconColor: Colors.blue.shade600,
                     title: '开发者',
-                    subtitle: 'gaq',
+                    subtitle: 'anlife',
+                  ),
+                  const Divider(height: 1, indent: 56),
+
+                  // 更新日志
+                  _buildInfoItem(
+                    icon: Icons.history,
+                    iconColor: Colors.teal.shade600,
+                    title: '更新日志',
+                    subtitle: '查看当前版本及历史版本的更新内容',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const ChangelogPage(),
+                        ),
+                      );
+                    },
                   ),
                   const Divider(height: 1, indent: 56),
 
@@ -129,7 +135,9 @@ class _AboutPageState extends State<AboutPage> {
                     iconColor: Colors.green.shade600,
                     title: 'GitHub 仓库',
                     subtitle: 'Gaq152/dailyhot-flutter',
-                    onTap: () => _launchUrl('https://github.com/Gaq152/dailyhot-flutter'),
+                    onTap: () => _launchUrl(
+                      'https://github.com/Gaq152/dailyhot-flutter',
+                    ),
                   ),
                   const Divider(height: 1, indent: 56),
 
@@ -139,7 +147,9 @@ class _AboutPageState extends State<AboutPage> {
                     iconColor: Colors.purple.shade600,
                     title: '反馈与建议',
                     subtitle: '报告问题或提出功能建议',
-                    onTap: () => _launchUrl('https://github.com/Gaq152/dailyhot-flutter/issues'),
+                    onTap: () => _launchUrl(
+                      'https://github.com/Gaq152/dailyhot-flutter/issues',
+                    ),
                   ),
                   const Divider(height: 1, indent: 56),
 
@@ -172,7 +182,11 @@ class _AboutPageState extends State<AboutPage> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.build_outlined, color: Colors.grey.shade700, size: 20),
+                        Icon(
+                          Icons.build_outlined,
+                          color: Colors.grey.shade700,
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           '技术栈',
@@ -205,10 +219,7 @@ class _AboutPageState extends State<AboutPage> {
             // 底部说明
             Text(
               '感谢使用每日热点',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade500,
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
             ),
             const SizedBox(height: 24),
           ],
@@ -253,23 +264,14 @@ class _AboutPageState extends State<AboutPage> {
       ),
       title: Text(
         title,
-        style: const TextStyle(
-          fontWeight: FontWeight.w500,
-          fontSize: 15,
-        ),
+        style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
       ),
       subtitle: Text(
         subtitle,
-        style: TextStyle(
-          fontSize: 13,
-          color: Colors.grey.shade600,
-        ),
+        style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
       ),
       trailing: onTap != null
-          ? Icon(
-              Icons.chevron_right,
-              color: Colors.grey.shade400,
-            )
+          ? Icon(Icons.chevron_right, color: Colors.grey.shade400)
           : null,
       onTap: onTap,
     );
@@ -281,10 +283,7 @@ class _AboutPageState extends State<AboutPage> {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
-          width: 1,
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
       ),
       child: Text(
         label,

@@ -276,7 +276,7 @@ _待添加_
 
 ## 👨‍💻 开发者
 
-**gaq**
+**anlife**
 
 - GitHub: [@Gaq152](https://github.com/Gaq152)
 - 项目仓库: [dailyhot-flutter](https://github.com/Gaq152/dailyhot-flutter)

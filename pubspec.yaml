@@ -66,6 +66,7 @@ flutter:
     - assets/images/logo/
     - assets/images/
     - .env
+    - CHANGELOG.md
 
 # 应用图标配置
 flutter_launcher_icons:
