@@ -57,47 +57,67 @@ class _ListPageState extends ConsumerState<ListPage> {
     }
   }
 
-  /// 滚动到选中的 Tab 使其居中
+  /// 精确居中滚动：通过 RenderBox 获取 Tab 实际位置，直接计算目标 offset。
+  /// 不依赖 ensureVisible（需要目标已在视口内）也不依赖宽度估算。
   void _scrollToSelectedTab({bool animate = true}) {
+    if (!_tabScrollController.hasClients) return;
     final key = _tabKeys[currentType];
-    if (key?.currentContext != null) {
-      Scrollable.ensureVisible(
-        key!.currentContext!,
-        alignment: 0.5,
-        duration: animate ? const Duration(milliseconds: 300) : Duration.zero,
+    final ctx = key?.currentContext;
+    if (ctx == null) return;
+
+    final tabBox = ctx.findRenderObject() as RenderBox?;
+    if (tabBox == null || !tabBox.attached) return;
+
+    // Tab 中心相对于 ListView 滚动原点的绝对偏移
+    final scrollOffset = _tabScrollController.offset;
+    final viewportWidth = _tabScrollController.position.viewportDimension;
+    final tabLeft = tabBox.localToGlobal(Offset.zero).dx + scrollOffset;
+    final tabCenter = tabLeft + tabBox.size.width / 2;
+    final targetOffset = (tabCenter - viewportWidth / 2).clamp(
+      0.0,
+      _tabScrollController.position.maxScrollExtent,
+    );
+
+    if (animate) {
+      _tabScrollController.animateTo(
+        targetOffset,
+        duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
       );
-      _initialScrollDone = true;
+    } else {
+      _tabScrollController.jumpTo(targetOffset);
     }
+    _initialScrollDone = true;
   }
 
-  /// 首次进入时滚动到选中的 Tab
-  /// 因为 ListView.builder 懒加载，需要先估算位置滚动，让目标 Tab 进入可视区域
+  /// 首次进入：Tab 栏是 ListView.builder 懒加载，目标 Tab 可能未渲染。
+  /// 先用真实已渲染 Tab 的平均宽度估算跳转，让目标进入视口，
+  /// 再在下一帧用 RenderBox 精确居中。
   void _scrollToSelectedTabInitial() {
     if (_initialScrollDone || _cachedCategories.isEmpty) return;
+    if (!_tabScrollController.hasClients) return;
 
-    // 找到当前选中的 Tab 索引
     final index = _cachedCategories.indexWhere((c) => c.name == currentType);
     if (index < 0) return;
 
-    // 估算每个 Tab 的平均宽度（包括 padding）
-    const estimatedTabWidth = 100.0;
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    // 计算目标偏移量，使选中项居中
-    final targetOffset =
-        (index * estimatedTabWidth) -
-        (screenWidth / 2) +
-        (estimatedTabWidth / 2);
-
-    // 先跳转到大概位置
-    if (_tabScrollController.hasClients) {
-      final maxScroll = _tabScrollController.position.maxScrollExtent;
-      final clampedOffset = targetOffset.clamp(0.0, maxScroll);
-      _tabScrollController.jumpTo(clampedOffset);
+    // 用已渲染 Tab 的真实宽度均值估算，比固定 100 更准
+    double avgWidth = 100.0;
+    final rendered = _tabKeys.values
+        .map((k) => k.currentContext?.findRenderObject() as RenderBox?)
+        .whereType<RenderBox>()
+        .toList();
+    if (rendered.isNotEmpty) {
+      avgWidth = rendered.map((b) => b.size.width).reduce((a, b) => a + b) /
+          rendered.length;
     }
 
-    // 等待渲染后再用 ensureVisible 精确居中
+    final viewportWidth = _tabScrollController.position.viewportDimension;
+    final rough = (index * (avgWidth + 8)) - viewportWidth / 2 + avgWidth / 2;
+    _tabScrollController.jumpTo(
+      rough.clamp(0.0, _tabScrollController.position.maxScrollExtent),
+    );
+
+    // 目标 Tab 现在应已进入视口，下一帧用 RenderBox 精确居中
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _scrollToSelectedTab(animate: false);
@@ -454,9 +474,13 @@ class _ListPageState extends ConsumerState<ListPage> {
   }
 
   Widget _buildCategoryTabs(List categories) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       height: 60,
-      color: Theme.of(context).appBarTheme.backgroundColor,
+      decoration: BoxDecoration(
+        color: cs.surface,
+        border: Border(bottom: BorderSide(color: cs.outlineVariant, width: 0.5)),
+      ),
       child: ListView.builder(
         controller: _tabScrollController,
         scrollDirection: Axis.horizontal,
@@ -483,6 +507,8 @@ class _ListPageState extends ConsumerState<ListPage> {
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: FilterChip(
               selected: isSelected,
+              selectedColor: Theme.of(context).colorScheme.primaryContainer,
+              side: BorderSide.none,
               label: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -502,7 +528,15 @@ class _ListPageState extends ConsumerState<ListPage> {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  Text(category.label),
+                  Text(
+                    category.label,
+                    style: TextStyle(
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.onPrimaryContainer
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ],
               ),
               onSelected: (selected) {
@@ -533,10 +567,13 @@ class _ListPageState extends ConsumerState<ListPage> {
     final pageData = data.data.sublist(0, visibleCount);
     final hasMore = visibleCount < totalItems;
 
-    return ListView.builder(
+    return ListView.separated(
       controller: _contentScrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       itemCount: pageData.length + (hasMore ? 1 : 0),
+      separatorBuilder: (_, index) => index < pageData.length - 1
+          ? Divider(height: 1, thickness: 0.5, indent: 56, color: Theme.of(context).colorScheme.outlineVariant)
+          : const SizedBox.shrink(),
       itemBuilder: (context, index) {
         if (index >= pageData.length) {
           return const Padding(
@@ -623,16 +660,17 @@ class _ListPageState extends ConsumerState<ListPage> {
                       Row(
                         children: [
                           Icon(
-                            Icons.local_fire_department,
+                            Icons.local_fire_department_rounded,
                             size: settings.listFontSize - 2,
-                            color: Colors.grey.shade600,
+                            color: Theme.of(context).colorScheme.error,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             item.hotText,
                             style: TextStyle(
                               fontSize: settings.listFontSize - 4,
-                              color: Colors.grey.shade600,
+                              color: Theme.of(context).colorScheme.error,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],

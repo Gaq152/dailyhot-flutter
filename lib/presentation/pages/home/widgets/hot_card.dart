@@ -59,9 +59,16 @@ class _HotCardState extends ConsumerState<HotCard> {
       hotListProvider(HotListParams(type: widget.category.name)),
     );
 
+    final cs = Theme.of(context).colorScheme;
     final brandColorBar = Container(
-      height: 3,
-      color: Color(widget.category.color),
+      height: 4,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(widget.category.color), cs.tertiary],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+      ),
     );
 
     return Card(
@@ -150,9 +157,15 @@ class _HotCardState extends ConsumerState<HotCard> {
       child: Row(
         children: [
           // Logo 图标
-          ClipRRect(
-            borderRadius: BorderRadius.circular(isMobile ? 6 : 8),
-            child: Image.asset(
+          Container(
+            padding: EdgeInsets.all(isMobile ? 5 : 6),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(isMobile ? 8 : 10),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(isMobile ? 4 : 5),
+              child: Image.asset(
               widget.category.icon,
               width: iconSize,
               height: iconSize,
@@ -169,6 +182,7 @@ class _HotCardState extends ConsumerState<HotCard> {
                   child: Icon(Icons.error_outline, size: iconSize * 0.6),
                 );
               },
+            ),
             ),
           ),
           SizedBox(width: spacing),
@@ -255,17 +269,17 @@ class _HotCardState extends ConsumerState<HotCard> {
     Color? textColor;
 
     if (index == 0) {
-      bgColor = Colors.red.shade500;
+      bgColor = const Color(0xFFE53935);
       textColor = Colors.white;
     } else if (index == 1) {
-      bgColor = Colors.orange.shade500;
+      bgColor = const Color(0xFFFF7043);
       textColor = Colors.white;
     } else if (index == 2) {
-      bgColor = Colors.yellow.shade700;
+      bgColor = const Color(0xFFFFB300);
       textColor = Colors.white;
     } else {
-      bgColor = Colors.grey.shade200;
-      textColor = Colors.grey.shade700;
+      bgColor = Theme.of(context).colorScheme.surfaceContainerHighest;
+      textColor = Theme.of(context).colorScheme.onSurfaceVariant;
     }
 
     final size = isMobile ? 18.0 : 20.0;
